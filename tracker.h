@@ -45,7 +45,7 @@ namespace octave
     typename Child = Reporter>
   class tracker;
 
-  template <typename Reporter, typename Child>
+  template <typename Derived, typename Child, typename Tracker>
   class reporter_base;
 
   template <typename Derived, typename Parent = tracker<Derived>,
@@ -61,12 +61,12 @@ namespace octave
     typename HookRemote = reporter_orphan_hook<Parent>>
   class multireporter;
 
-  template <typename Reporter>
-  class reporter_ptr
+  template <typename Child, typename ...Ts>
+  class reporter_base<void, Child, reporter_base<Ts...>>
   {
   public:
 
-    using reporter_type  = Reporter;
+    using reporter_type  = reporter_base<Ts...>;
 
     using value_type        = reporter_type;
     using pointer           = reporter_type *;
@@ -74,16 +74,16 @@ namespace octave
     using reference         = reporter_type&;
     using const_reference   = const reporter_type&;
 
-    explicit constexpr reporter_ptr (pointer ptr) noexcept
+    explicit constexpr reporter_base (pointer ptr) noexcept
       : m_ptr (ptr)
     { }
 
-    reporter_ptr (const reporter_ptr&)                      = delete;
-    reporter_ptr (reporter_ptr&& other) noexcept            = delete;
-    reporter_ptr& operator= (const reporter_ptr&)           = delete;
-    reporter_ptr& operator= (reporter_ptr&& other) noexcept = delete;
+    reporter_base (const reporter_base&)                      = delete;
+    reporter_base (reporter_base&& other) noexcept            = delete;
+    reporter_base& operator= (const reporter_base&)           = delete;
+    reporter_base& operator= (reporter_base&& other) noexcept = delete;
 
-    ~reporter_ptr (void) noexcept = default;
+    ~reporter_base (void) noexcept = default;
     
     void orphan_remote (void) noexcept 
     {
@@ -105,26 +105,6 @@ namespace octave
     {
       return get ();
     }
-
-    friend bool operator== (reporter_ptr r, pointer p) noexcept
-    {
-      return r.get () == p;
-    }
-
-    friend bool operator== (pointer p, reporter_ptr r) noexcept
-    {
-      return p == r.get ();
-    }
-
-    friend bool operator!= (reporter_ptr r, pointer p) noexcept
-    {
-      return r.get () != p;
-    }
-
-    friend bool operator!= (pointer p, reporter_ptr r) noexcept
-    {
-      return p != r.get ();
-    }
     
     template <typename T>
     void reset_remote_tracker (T *ptr) noexcept
@@ -143,6 +123,387 @@ namespace octave
 
   };
 
+  template <typename Derived, typename Child>
+  class reporter_base<Derived, Child, tracker_base<Derived, Child>>
+  {
+  public:
+
+    using derived_type  = Derived;
+    using child_type     = Child;
+
+    using tracker_type = tracker_base<derived_type, child_type>;
+    using ext_citer_type    = typename tracker_type::citer;
+    using self_iter_type    = typename tracker_type::internal_iter;
+
+    friend void tracker_type::transfer_from (tracker_type&& src,
+                                             ext_citer_type pos) noexcept;
+
+    reporter_base (void) noexcept = default;
+
+    explicit reporter_base (tracker_type& tkr)
+      : m_tracker (&tkr),
+        m_self_iter (m_tracker->track (downcast (this)))
+    { }
+
+    reporter_base (const reporter_base& other)
+      : m_tracker (other.m_tracker),
+        m_self_iter (has_tracker () ? m_tracker->track (downcast (this))
+                                    : self_iter_type { })
+    { }
+
+    reporter_base (reporter_base&& other) noexcept
+      : m_tracker (other.m_tracker),
+        m_self_iter (other.m_self_iter)
+    {
+      if (has_tracker ())
+        {
+          m_self_iter->reset (downcast (this));
+          other.m_tracker = nullptr; // other no longer owns an iterator
+        }
+    }
+
+    reporter_base& operator= (const reporter_base& other)
+    {
+      // copy-and-swap
+      if (other.m_tracker != m_tracker)
+        reporter_base (other).swap (*this);
+      return *this;
+    }
+
+    reporter_base& operator= (reporter_base&& other) noexcept
+    {
+      if (&other != this)
+        {
+          if (has_tracker ())
+            m_tracker->erase (m_self_iter);
+
+          m_tracker   = other.m_tracker;
+          m_self_iter = other.m_self_iter;
+
+          if (has_tracker ())
+            {
+              m_self_iter->reset (downcast (this));
+              other.m_tracker = nullptr; // other no longer owns an iterator
+            }
+        }
+      return *this;
+    }
+
+    ~reporter_base (void) noexcept
+    {
+      if (has_tracker ())
+        m_tracker->erase (m_self_iter);
+    }
+
+    void swap (reporter_base& other) noexcept
+    {
+      if (other.m_tracker != m_tracker)
+        {
+          std::swap (m_tracker, other.m_tracker);
+          std::swap (m_self_iter, other.m_self_iter);
+
+          if (has_tracker ())
+            m_self_iter->reset (downcast (this));
+
+          if (other.has_tracker ())
+            other.m_self_iter->reset (downcast (&other));
+        }
+    }
+
+    void fast_swap (reporter_base& other) noexcept
+    {
+      // where m_tracker is known to be non-null
+      if (other.m_tracker != m_tracker)
+        {
+          std::swap (m_tracker, other.m_tracker);
+          std::swap (m_self_iter, other.m_self_iter);
+
+          if (has_tracker ())
+            m_self_iter->reset (downcast (this));
+
+          other.m_self_iter->reset (downcast (&other));
+        }
+    }
+
+    constexpr bool has_tracker (void) const noexcept
+    {
+      return m_tracker != nullptr;
+    }
+
+    //! only use after using has_parent
+    constexpr tracker_type *get_tracker (void) const noexcept
+    {
+      return m_tracker;
+    }
+
+    std::size_t get_position (void) const noexcept
+    {
+      if (! has_tracker ())
+        return 0;
+      return std::distance (m_tracker->m_reporters.begin (), m_self_iter);
+    }
+
+    reporter_base& rebind (tracker_type& tkr)
+    {
+      // copy-and-swap
+      if (&tkr != m_tracker)
+        reporter_base (tkr).fast_swap (*this);
+      return *this;
+    }
+
+    void reset_tracker (tracker_type *ptr) noexcept
+    {
+      m_tracker = ptr;
+    }
+
+  protected:
+
+    void reset_iterator (self_iter_type it) noexcept
+    {
+      m_self_iter = it;
+    }
+
+    void reset (tracker_type *ptr = nullptr,
+                self_iter_type it = self_iter_type { }) noexcept
+    {
+      m_tracker   = ptr;
+      m_self_iter = it;
+    }
+
+  private:
+
+    static constexpr const derived_type * downcast (const reporter_base *r)
+    {
+      return static_cast<const derived_type *> (r);
+    }
+
+    static constexpr derived_type * downcast (reporter_base *r)
+    {
+      return static_cast<derived_type *> (r);
+    }
+
+    tracker_type * m_tracker = nullptr;
+    self_iter_type m_self_iter    = self_iter_type { };
+
+  };
+
+  template <typename Derived, typename Parent, typename Child, typename Hook>
+  class intrusive_reporter : public reporter_base<Derived, Child, tracker_base<Derived, Child>>
+  {
+
+  public:
+
+    using derived_type      = Derived;
+    using parent_type       = Parent;
+    using child_type        = Child;
+    using hook_type         = Hook;
+    using base_type         = reporter_base<derived_type, child_type, tracker_base<derived_type, child_type>>;
+
+    using tracker_type      = tracker<derived_type, parent_type, child_type>;
+    using tracker_base_type = typename tracker_type::base_type;
+
+    static_assert (std::is_same<tracker_base_type,
+                     tracker_base<derived_type, child_type>>::value,
+                   "tracker base has unexpected type");
+
+    friend reporter_base<void, derived_type, base_type>::~reporter_base (void) noexcept;
+
+    intrusive_reporter (void) noexcept = default;
+
+    explicit intrusive_reporter (tracker_type& tkr, hook_type&& hook)
+      : base_type (tkr),
+        m_orphan_hook (std::move (hook))
+    { }
+
+    explicit intrusive_reporter (tracker_type& tkr)
+      : intrusive_reporter (tkr, hook_type { })
+    { }
+
+    intrusive_reporter (const intrusive_reporter& other)
+      : base_type (other),
+        m_orphan_hook (other.m_orphan_hook)
+    { }
+
+    intrusive_reporter (intrusive_reporter&& other) noexcept
+      : base_type (std::move (other)),
+        m_orphan_hook (std::move (other.m_orphan_hook))
+    { }
+
+    intrusive_reporter& operator= (const intrusive_reporter& other)
+    {
+      if (&other != this)
+        {
+          base_type::operator= (other);
+          m_orphan_hook = other.m_orphan_hook;
+        }
+      return *this;
+    }
+
+    intrusive_reporter& operator= (intrusive_reporter&& other) noexcept
+    {
+      base_type::operator= (std::move (other));
+      m_orphan_hook = std::move (other.m_orphan_hook);
+      return *this;
+    }
+
+    void swap (intrusive_reporter& other)
+    {
+      base_type::swap (other);
+      std::swap (m_orphan_hook, other.m_orphan_hook);
+    }
+
+    constexpr const child_type * get_child_ptr (void) const noexcept
+    {
+      return downcast (this);
+    }
+
+    child_type * get_child_ptr (void) noexcept
+    {
+      return downcast (this);
+    }
+
+    constexpr tracker_type *get_tracker (void) const noexcept
+    {
+      return static_cast<tracker_type *> (base_type::get_tracker ());
+    }
+
+    constexpr bool has_parent (void) const noexcept
+    {
+      return this->has_tracker () && this->get_tracker ()->has_parent ();
+    }
+
+    constexpr parent_type *get_parent (void) const noexcept
+    {
+      return this->has_tracker () ? this->get_tracker()->get_parent ()
+                                  : nullptr;
+    }
+
+    void orphan (void)
+    {
+      base_type::reset_tracker (nullptr);
+      m_orphan_hook (get_child_ptr ());
+    }
+
+  private:
+
+    static constexpr const derived_type * downcast (const intrusive_reporter *r)
+    {
+      return static_cast<const derived_type *> (r);
+    }
+
+    static constexpr derived_type * downcast (intrusive_reporter *r)
+    {
+      return static_cast<derived_type *> (r);
+    }
+
+    hook_type m_orphan_hook = hook_type { };
+
+  };
+
+  //! non-intrusive; for use as a class member
+  template <typename Child, typename Parent, typename Hook>
+  class reporter : public reporter_base<reporter<Child, Parent, Hook>, Child, tracker_base<reporter<Child, Parent, Hook>, Child>>
+  {
+  public:
+    using child_type   = Child;
+    using parent_type  = Parent;
+    using hook_type    = Hook;
+    using base_type    = reporter_base<reporter, Child, tracker_base<reporter, Child>>;
+    using tracker_type = tracker<reporter, parent_type, child_type>;
+
+    static_assert (std::is_same<tracker_type,
+                     tracker<reporter, parent_type, child_type>>::value,
+                   "tracker has unexpected type");
+
+    reporter (void) noexcept = default;
+
+    explicit reporter (child_type *child, tracker_type& tkr, hook_type&& hook)
+      : base_type (tkr),
+        m_child (child),
+        m_orphan_hook (std::move (hook))
+    { }
+
+    explicit reporter (child_type *child, tracker_type& tkr)
+      : reporter (child, tkr, hook_type { })
+    { }
+
+    explicit reporter (tracker_type& tkr, hook_type&& hook)
+      : base_type (tkr),
+        m_orphan_hook (std::move (hook))
+    { }
+
+    explicit reporter (tracker_type& tkr)
+      : reporter (tkr, hook_type { })
+    { }
+
+    reporter (const reporter&)            = delete;
+
+    reporter (reporter&&) noexcept        = delete;
+
+    reporter (child_type *new_child, const reporter& other)
+      : base_type (other),
+        m_child (new_child),
+        m_orphan_hook (other.m_orphan_hook)
+    { }
+
+    reporter (child_type *new_child, reporter&& other) noexcept
+      : base_type (std::move (other)),
+        m_child (new_child),
+        m_orphan_hook (std::move (other.m_orphan_hook))
+    { }
+
+    reporter& operator= (const reporter& other)
+    {
+      if (&other != this)
+        {
+          base_type::operator= (other);
+          m_orphan_hook = other.m_orphan_hook;
+        }
+      return *this;
+    }
+
+    reporter& operator= (reporter&& other) noexcept
+    {
+      base_type::operator= (std::move (other));
+      m_orphan_hook = std::move (other.m_orphan_hook);
+      return *this;
+    }
+
+    void swap (reporter& other)
+    {
+      base_type::swap (other);
+      std::swap (m_child, other.m_child);
+      std::swap (m_orphan_hook, other.m_orphan_hook);
+    }
+
+    constexpr child_type& get_child_ref (void) const noexcept
+    {
+      return *m_child;
+    }
+
+    constexpr const child_type * get_child_ptr (void) const noexcept
+    {
+      return m_child;
+    }
+
+    child_type * get_child_ptr (void) noexcept
+    {
+      return m_child;
+    }
+
+    void orphan (void)
+    {
+      base_type::reset_tracker (nullptr);
+      m_orphan_hook (get_child_ptr ());
+    }
+
+  private:
+
+    child_type *m_child = nullptr;
+    hook_type m_orphan_hook = hook_type { };
+
+  };
+
   template <typename Reporter, typename Child>
   class tracker_base
   {
@@ -151,11 +512,11 @@ namespace octave
     using reporter_type = Reporter;
     using child_type    = Child;
 
-    friend reporter_base<reporter_type, child_type>;
+    friend reporter_base<reporter_type, child_type, tracker_base>;
 
   protected:
 
-    using element_type    = reporter_ptr<reporter_type>;
+    using element_type    = reporter_base<void, child_type, reporter_type>;
     using reporter_list   = plf::list<element_type>;
     using internal_iter   = typename reporter_list::iterator;
     using internal_citer  = typename reporter_list::const_iterator;
@@ -172,8 +533,7 @@ namespace octave
       
       using internal_type     = typename internal_citer::value_type;
 
-      static_assert (std::is_same<internal_type,
-                                  reporter_ptr<reporter_type>>::value,
+      static_assert (std::is_same<internal_type, element_type>::value,
                      "internal_type was unexpected type");
 
       using difference_type   = typename internal_citer::difference_type;
@@ -576,401 +936,6 @@ namespace octave
     {
       return static_cast<parent_type *> (this);
     }
-
-  };
-
-//  template <typename Child, typename Parent, typename Hook>
-//  class tracker<reporter<Child, Parent, Hook>, Parent, reporter<Child, Parent, Hook>>
-//    : public tracker<reporter<Child, Parent, Hook>, Parent, Child>
-//  {
-//  public:
-//    using reporter_type = reporter<Child, Parent, Hook>;
-//    using parent_type   = Parent;
-//    using child_type    = Child;
-//
-//    using forward_type  = tracker<reporter<Child, Parent, Hook>, Parent, Child>;
-//    using base_type     = typename forward_type::base_type;
-//  };
-
-  template <typename Reporter, typename Child>
-  class reporter_base
-  {
-  public:
-
-    using reporter_type  = Reporter;
-    using child_type     = Child;
-
-    using tracker_base_type   = tracker_base<reporter_type, child_type>;
-    using self_ptr_type  = reporter_ptr<reporter_type>;
-    using ext_citer_type = typename tracker_base_type::citer;
-    using self_iter_type = typename tracker_base_type::internal_iter;
-
-    friend void tracker_base_type::transfer_from (tracker_base_type&& src, 
-                                             ext_citer_type pos) noexcept;
-
-    reporter_base (void) noexcept = default;
-
-    explicit reporter_base (tracker_base_type& tkr)
-      : m_tracker (&tkr),
-        m_self_iter (m_tracker->track (downcast (this)))
-    { }
-
-    reporter_base (const reporter_base& other)
-      : m_tracker (other.m_tracker),
-        m_self_iter (has_tracker () ? m_tracker->track (downcast (this))
-                                    : self_iter_type { })
-    { }
-
-    reporter_base (reporter_base&& other) noexcept
-      : m_tracker (other.m_tracker),
-        m_self_iter (other.m_self_iter)
-    {
-      if (has_tracker ())
-        {
-          m_self_iter->reset (downcast (this));
-          other.m_tracker = nullptr; // other no longer owns an iterator
-        }
-    }
-
-    reporter_base& operator= (const reporter_base& other)
-    {
-      // copy-and-swap
-      if (other.m_tracker != m_tracker)
-        reporter_base (other).swap (*this);
-      return *this;
-    }
-
-    reporter_base& operator= (reporter_base&& other) noexcept
-    {
-      if (&other != this)
-        {
-          if (has_tracker ())
-            m_tracker->erase (m_self_iter);
-
-          m_tracker   = other.m_tracker;
-          m_self_iter = other.m_self_iter;
-
-          if (has_tracker ())
-            {
-              m_self_iter->reset (downcast (this));
-              other.m_tracker = nullptr; // other no longer owns an iterator
-            }
-        }
-      return *this;
-    }
-
-    ~reporter_base (void) noexcept
-    {
-      if (has_tracker ())
-        m_tracker->erase (m_self_iter);
-    }
-    
-    void swap (reporter_base& other) noexcept 
-    {
-      if (other.m_tracker != m_tracker)
-        {
-          std::swap (m_tracker, other.m_tracker);
-          std::swap (m_self_iter, other.m_self_iter);
-          
-          if (has_tracker ())
-            m_self_iter->reset (downcast (this));
-          
-          if (other.has_tracker ())
-            other.m_self_iter->reset (downcast (&other));
-        }
-    }
-
-    void fast_swap (reporter_base& other) noexcept
-    {
-      // where m_tracker is known to be non-null
-      if (other.m_tracker != m_tracker)
-        {
-          std::swap (m_tracker, other.m_tracker);
-          std::swap (m_self_iter, other.m_self_iter);
-
-          if (has_tracker ())
-            m_self_iter->reset (downcast (this));
-
-          other.m_self_iter->reset (downcast (&other));
-        }
-    }
-
-    constexpr bool has_tracker (void) const noexcept
-    {
-      return m_tracker != nullptr;
-    }
-
-    //! only use after using has_parent
-    constexpr tracker_base_type *get_base_tracker (void) const noexcept
-    {
-      return m_tracker;
-    }
-
-    std::size_t get_position (void) const noexcept
-    {
-      if (! has_tracker ())
-        return 0;
-      return std::distance (m_tracker->m_reporters.begin (), m_self_iter);
-    }
-    
-    reporter_base& rebind (tracker_base_type& tkr)
-    {
-      // copy-and-swap
-      if (&tkr != m_tracker)
-        reporter_base (tkr).fast_swap (*this);
-      return *this;
-    }
-
-    void reset_tracker (tracker_base_type *ptr) noexcept
-    {
-      m_tracker = ptr;
-    }
-    
-  protected:
-
-    void reset_iterator (self_iter_type it) noexcept
-    {
-      m_self_iter = it;
-    }
-
-    void reset (tracker_base_type *ptr = nullptr,
-                self_iter_type it = self_iter_type { }) noexcept
-    {
-      m_tracker   = ptr;
-      m_self_iter = it;
-    }
-
-  private:
-
-    static constexpr const reporter_type * downcast (const reporter_base *r)
-    {
-      return static_cast<const reporter_type *> (r);
-    }
-
-    static constexpr reporter_type * downcast (reporter_base *r)
-    {
-      return static_cast<reporter_type *> (r);
-    }
-
-    tracker_base_type * m_tracker = nullptr;
-    self_iter_type m_self_iter    = self_iter_type { };
-
-  };
-
-  template <typename Derived, typename Parent, typename Child, typename Hook>
-  class intrusive_reporter : public reporter_base<Derived, Child>
-  {
-
-  public:
-
-    using derived_type      = Derived;
-    using parent_type       = Parent;
-    using child_type        = Child;
-    using hook_type         = Hook;
-    using base_type         = reporter_base<derived_type, child_type>;
-    
-    using tracker_type      = tracker<derived_type, parent_type, child_type>;
-    using tracker_base_type = typename tracker_type::base_type;
-
-    static_assert (std::is_same<tracker_base_type,
-                                tracker_base<derived_type, child_type>>::value,
-                   "tracker base has unexpected type");
-
-    friend reporter_ptr<Derived>::~reporter_ptr<Derived> (void) noexcept;
-
-    intrusive_reporter (void) noexcept = default;
-
-    explicit intrusive_reporter (tracker_type& tkr, hook_type&& hook)
-      : base_type (tkr),
-        m_orphan_hook (std::move (hook))
-    { }
-
-    explicit intrusive_reporter (tracker_type& tkr)
-      : intrusive_reporter (tkr, hook_type { })
-    { }
-
-    intrusive_reporter (const intrusive_reporter& other)
-      : base_type (other),
-        m_orphan_hook (other.m_orphan_hook)
-    { }
-
-    intrusive_reporter (intrusive_reporter&& other) noexcept
-      : base_type (std::move (other)),
-        m_orphan_hook (std::move (other.m_orphan_hook))
-    { }
-
-    intrusive_reporter& operator= (const intrusive_reporter& other)
-    {
-      if (&other != this)
-        {
-          base_type::operator= (other);
-          m_orphan_hook = other.m_orphan_hook;
-        }
-      return *this;
-    }
-
-    intrusive_reporter& operator= (intrusive_reporter&& other) noexcept
-    {
-      base_type::operator= (std::move (other));
-      m_orphan_hook = std::move (other.m_orphan_hook);
-      return *this;
-    }
-
-    void swap (intrusive_reporter& other)
-    {
-      base_type::swap (other);
-      std::swap (m_orphan_hook, other.m_orphan_hook);
-    }
-    
-    constexpr const child_type * get_child_ptr (void) const noexcept
-    {
-      return downcast (this);
-    }
-
-    child_type * get_child_ptr (void) noexcept
-    {
-      return downcast (this);
-    }
-
-    constexpr tracker_type *get_tracker (void) const noexcept
-    {
-      return static_cast<tracker_type *> (this->get_base_tracker ());
-    }
-
-    constexpr bool has_parent (void) const noexcept
-    {
-      return this->has_tracker () && this->get_tracker ()->has_parent ();
-    }
-
-    constexpr parent_type *get_parent (void) const noexcept
-    {
-      return this->has_tracker () ? this->get_tracker()->get_parent ()
-                                  : nullptr;
-    }
-
-    void orphan (void)
-    {
-      base_type::reset_tracker (nullptr);
-      m_orphan_hook (get_child_ptr ());
-    }
-
-  private:
-    
-    static constexpr const derived_type * downcast (const intrusive_reporter *r)
-    {
-      return static_cast<const derived_type *> (r);
-    }
-
-    static constexpr derived_type * downcast (intrusive_reporter *r)
-    {
-      return static_cast<derived_type *> (r);
-    }
-
-    hook_type m_orphan_hook = hook_type { };
-    
-  };
-
-  //! non-intrusive; for use as a class member
-  template <typename Child, typename Parent, typename Hook>
-  class reporter : public reporter_base<reporter<Child, Parent, Hook>, Child>
-  {
-  public:
-    using child_type   = Child;
-    using parent_type  = Parent;
-    using hook_type    = Hook;
-    using base_type    = reporter_base<reporter, child_type>;
-    using tracker_type = tracker<reporter, parent_type, child_type>;
-
-    static_assert (std::is_same<tracker_type,
-                           tracker<reporter, parent_type, child_type>>::value,
-                   "tracker has unexpected type");
-    
-    reporter (void) noexcept = default;
-
-    explicit reporter (child_type *child, tracker_type& tkr, hook_type&& hook)
-      : base_type (tkr),
-        m_child (child),
-        m_orphan_hook (std::move (hook))
-    { }
-
-    explicit reporter (child_type *child, tracker_type& tkr)
-      : reporter (child, tkr, hook_type { })
-    { }
-
-    explicit reporter (tracker_type& tkr, hook_type&& hook)
-      : base_type (tkr),
-        m_orphan_hook (std::move (hook))
-    { }
-
-    explicit reporter (tracker_type& tkr)
-      : reporter (tkr, hook_type { })
-    { }
-
-    reporter (const reporter&)            = delete;
-    
-    reporter (reporter&&) noexcept        = delete;
-
-    reporter (child_type *new_child, const reporter& other)
-      : base_type (other),
-        m_child (new_child),
-        m_orphan_hook (other.m_orphan_hook)
-    { }
-
-    reporter (child_type *new_child, reporter&& other) noexcept
-      : base_type (std::move (other)),
-        m_child (new_child),
-        m_orphan_hook (std::move (other.m_orphan_hook))
-    { }
-
-    reporter& operator= (const reporter& other)
-    {
-      if (&other != this)
-        {
-          base_type::operator= (other);
-          m_orphan_hook = other.m_orphan_hook;
-        }
-      return *this;
-    }
-
-    reporter& operator= (reporter&& other) noexcept
-    {
-      base_type::operator= (std::move (other));
-      m_orphan_hook = std::move (other.m_orphan_hook);
-      return *this;
-    }
-
-    void swap (reporter& other)
-    {
-      base_type::swap (other);
-      std::swap (m_child, other.m_child);
-      std::swap (m_orphan_hook, other.m_orphan_hook);
-    }
-
-    constexpr child_type& get_child_ref (void) const noexcept
-    {
-      return *m_child;
-    }
-
-    constexpr const child_type * get_child_ptr (void) const noexcept
-    {
-      return m_child;
-    }
-
-    child_type * get_child_ptr (void) noexcept
-    {
-      return m_child;
-    }
-
-    void orphan (void)
-    {
-      base_type::reset_tracker (nullptr);
-      m_orphan_hook (get_child_ptr ());
-    }
-
-  private:
-
-    child_type *m_child = nullptr;
-    hook_type m_orphan_hook = hook_type { };
 
   };
 
