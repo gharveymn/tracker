@@ -668,12 +668,15 @@ std::chrono::duration<double> perf_create (void)
 
   Parent p, q;
   std::list<Child> children;
-  constexpr std::size_t iter_max = 50000;
+  constexpr std::size_t iter_max = 100000;
 
   for (std::size_t i = 0; i < iter_max; ++i)
     {
       children.emplace_back (p.create ());
     }
+
+  q.transfer_from (p);
+  p.transfer_from (q);
 
   std::random_device rd;
   std::mt19937 gen (rd());
@@ -710,7 +713,7 @@ std::chrono::duration<double> perf_access (void)
 
   Parent p;
   std::vector<Child> children;
-  constexpr std::size_t iter_max = 50000;
+  constexpr std::size_t iter_max = 100000;
 
   for (std::size_t i = 0; i < iter_max; ++i)
     {
@@ -764,7 +767,7 @@ std::chrono::duration<double> perf_multireporter (void)
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
-  constexpr std::size_t num_iter = 1000;
+  constexpr std::size_t num_iter = 10000;
   
   std::vector<anon_self_parent> objs;
   objs.reserve (num_iter);
@@ -802,7 +805,7 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
-  constexpr std::size_t num_iter = 1000;
+  constexpr std::size_t num_iter = 10000;
 
   std::vector<anon1> a1s;
   std::vector<anon2> a2s;
@@ -826,7 +829,7 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
                      });
       a1s.back ().bind (a2s.back ());
     }
-
+    
   std::cout << a1s.back () << std::endl;
   std::cout << a2s.back () << std::endl;
 

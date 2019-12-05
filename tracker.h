@@ -26,6 +26,7 @@ along with Octave; see the file COPYING.  If not, see
 
 #include "octave-config.h"
 #include <plf_list.h>
+#include <iterator>
 
 namespace octave
 {
@@ -138,7 +139,7 @@ namespace octave
 
   private:
 
-    reporter_type * m_ptr = nullptr;
+    reporter_type *m_ptr = nullptr;
 
   };
 
@@ -168,6 +169,7 @@ namespace octave
     // pretend like reporter_ptr doesn't exist
     struct external_iterator
     {
+      
       using internal_type     = typename internal_citer::value_type;
 
       static_assert (std::is_same<internal_type,
@@ -324,8 +326,8 @@ namespace octave
 
     void transfer_from (tracker_base&& src, citer pos) noexcept
     {
-      for (internal_ref c_ptr : src.m_reporters)
-        c_ptr.reset_remote_tracker (this);
+      for (internal_ref rptr : src.m_reporters)
+        rptr.reset_remote_tracker (this);
       return m_reporters.splice (pos.m_citer, src.m_reporters);
     }
 
@@ -632,7 +634,7 @@ namespace octave
 
     reporter_base& operator= (const reporter_base& other)
     {
-      // copy-and-swap idiom
+      // copy-and-swap
       if (other.m_tracker != m_tracker)
         reporter_base (other).swap (*this);
       return *this;
@@ -1251,7 +1253,7 @@ namespace octave
     
   private:
     
-    internal_citer internal_bind (remote_type& r)
+    internal_iter internal_bind (remote_type& r)
     {
       internal_iter it = this->track ();
       try
