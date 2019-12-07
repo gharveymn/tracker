@@ -4,7 +4,7 @@
 #include <vector>
 #include <chrono>
 #include <random>
-#include <ir-common-util.h>
+#include <ext/memory>
 #include <list>
 
 #include "tracker.h"
@@ -873,13 +873,13 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   print_all ();
 
   // copy constructor
-  std::unique_ptr<named1> ptr (make_unique<named1> (n1_3));
+  std::unique_ptr<named1> ptr (ext::make_unique<named1> (n1_3));
 
   std::cout << "copy ctor: " << *ptr << std::endl;
   print_all ();
   
   // move constructor
-  make_unique<named1> (std::move (n1_2)).swap (ptr);
+  ext::make_unique<named1> (std::move (n1_2)).swap (ptr);
 
   std::cout << "move ctor: " << *ptr << std::endl;
   print_all ();
@@ -1037,6 +1037,7 @@ std::chrono::duration<double> test_reporter (void)
 
 int main()
 {
+  
   std::cout << test_reporter <child, parent> ().count () << std::endl;
   std::cout << test_reporter <nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
 

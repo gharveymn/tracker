@@ -20,13 +20,14 @@ along with Octave; see the file COPYING.  If not, see
 
 */
 
-//! standalone
 #if ! defined (octave_tracker_h)
 #define octave_tracker_h 1
 
+//! I am well aware this is needlessly complex and doesn't provide all 
+//! the functionality desired. I'll refactor at some point.
+
 #include "octave-config.h"
 #include <plf_list.h>
-#include <iterator>
 
 namespace octave
 {
@@ -34,7 +35,7 @@ namespace octave
   template <typename Child>
   struct reporter_orphan_hook
   {
-    constexpr void operator() (const Child*) const noexcept { }
+    void operator() (const Child*) const noexcept { }
   };
 
   template <typename Reporter, typename Child>
@@ -299,7 +300,7 @@ namespace octave
       reset ();
     }
     
-    void reset (void) noexcept 
+    void reset (void) noexcept
     {
       if (! m_reporters.empty ())
         {
@@ -312,11 +313,9 @@ namespace octave
     void swap (tracker_base& other) noexcept 
     {
       // kinda expensive
+      this->repoint_reporters (&other);
+      other.repoint_reporters (this);
       m_reporters.swap (other.m_reporters);
-      for (internal_ref c_ptr : m_reporters)
-        c_ptr.reset_remote_tracker (this);
-      for (internal_ref c_ptr : other.m_reporters)
-        c_ptr.reset_remote_tracker (&other);
     }
 
     std::size_t num_reporters (void) const noexcept
@@ -326,8 +325,7 @@ namespace octave
 
     void transfer_from (tracker_base&& src, citer pos) noexcept
     {
-      for (internal_ref rptr : src.m_reporters)
-        rptr.reset_remote_tracker (this);
+      src.repoint_reporters (this);
       return m_reporters.splice (pos.m_citer, src.m_reporters);
     }
 
@@ -438,6 +436,13 @@ namespace octave
     internal_iter erase (internal_citer cit) noexcept
     {
       return m_reporters.erase (cit);
+    }
+
+    // unsafe!
+    void repoint_reporters (tracker_base *ptr)
+    {
+      for (internal_ref rptr : m_reporters)
+        rptr.reset_remote_tracker (ptr);
     }
     
 //    reporter_list copy_reporters (void) const
@@ -600,10 +605,10 @@ namespace octave
     using reporter_type  = Reporter;
     using child_type     = Child;
 
-    using tracker_base_type   = tracker_base<reporter_type, child_type>;
-    using self_ptr_type  = reporter_ptr<reporter_type>;
-    using ext_citer_type = typename tracker_base_type::citer;
-    using self_iter_type = typename tracker_base_type::internal_iter;
+    using tracker_base_type  = tracker_base<reporter_type, child_type>;
+    using self_ptr_type      = reporter_ptr<reporter_type>;
+    using ext_citer_type     = typename tracker_base_type::citer;
+    using self_iter_type     = typename tracker_base_type::internal_iter;
 
     friend void tracker_base_type::transfer_from (tracker_base_type&& src, 
                                              ext_citer_type pos) noexcept;
@@ -1108,8 +1113,18 @@ namespace octave
       l.bind (r);
     }
 
+    template <typename Compare, typename Head, typename ...Tail>
+    struct all_same
+      : std::integral_constant<bool, std::is_same<Compare, Head>::value
+                                     && all_same<Compare, Tail...>::value>
+    { };
+
+    template <typename Compare, typename T>
+    struct all_same<Compare, T> : std::is_same<Compare, T>
+    { };
+    
     template <typename ...Args>
-    enable_if_t<conjunction<std::is_same<Args, remote_type>...>::value> 
+    typename std::enable_if<all_same<remote_type, Args...>::value>::type 
     bind (remote_type& r, Args&... args)
     {
       internal_bind (r);
