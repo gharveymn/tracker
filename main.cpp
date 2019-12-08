@@ -14,11 +14,11 @@ using namespace octave;
 class parent;
 class child;
 
-class child : public intrusive_reporter<child, parent>
+class child : public intrusive_reporter<child, parent, tracker<parent, child>>
 {
 public:
 
-  using base_type = intrusive_reporter<child, parent>;
+  using base_type = intrusive_reporter<child, parent, tracker<parent, child>>;
 
   child (void) = default;
 
@@ -26,12 +26,12 @@ public:
     : m_name (std::move (s))
   { }
 
-  child (base_type::tracker_type& p)
-    : intrusive_reporter (p)
+  child (tracker<parent, child>& tkr)
+    : intrusive_reporter (tkr)
   { }
 
-  child (base_type::tracker_type& p, std::string s)
-    : intrusive_reporter (p),
+  child (tracker<parent, child>& tkr, std::string s)
+    : intrusive_reporter (tkr),
       m_name (std::move (s))
   { }
 
@@ -83,7 +83,7 @@ class parent
 public:
 
   using reporter_type = child;
-  using tracker_type  = tracker<child, parent>;
+  using tracker_type  = tracker<parent, child>;
 
   parent (void)
     : m_children (*this)
@@ -124,7 +124,7 @@ public:
   tracker_type::iter end (void)   noexcept { return m_children.end (); }
 
 private:
-  tracker_type m_children;
+  tracker<parent, child> m_children;
   std::string m_name;
 };
 
@@ -148,18 +148,18 @@ public:
 
   using reporter_type = reporter<nonintruded_child_s, nonintruded_parent_s>;
 
-  nonintruded_child_s (reporter_type::tracker_type& p, std::string name)
-    : m_reporter (this, p),
+  nonintruded_child_s (reporter_type::remote_type& remote, std::string name)
+    : m_reporter (*this, remote),
       m_name (std::move (name))
   { }
 
   nonintruded_child_s (const nonintruded_child_s& other)
-    : m_reporter (this, other.m_reporter),
+    : m_reporter (*this, other.m_reporter),
       m_name (other.m_name)
   { }
 
   nonintruded_child_s (nonintruded_child_s&& other) noexcept
-    : m_reporter (this, std::move (other.m_reporter)),
+    : m_reporter (*this, std::move (other.m_reporter)),
       m_name (std::move (other.m_name))
   { }
 
@@ -208,16 +208,16 @@ public:
 
   using reporter_type = reporter<nonintruded_child, nonintruded_parent>;
 
-  nonintruded_child (reporter_type::tracker_type& p)
-    : m_reporter (this, p)
+  nonintruded_child (reporter_type::remote_type& p)
+    : m_reporter (*this, p)
   { }
 
   nonintruded_child (const nonintruded_child& other)
-    : m_reporter (this, other.m_reporter)
+    : m_reporter (*this, other.m_reporter)
   { }
 
   nonintruded_child (nonintruded_child&& other) noexcept
-    : m_reporter (this, std::move (other.m_reporter))
+    : m_reporter (*this, std::move (other.m_reporter))
   { }
 
   nonintruded_child& operator= (const nonintruded_child& other) = default;
@@ -256,7 +256,7 @@ public:
   // using tracker_type = tracker_base<reporter<nonintruded_child, nonintruded_parent>, nonintruded_parent>;
 
   using reporter_type = typename T::reporter_type;
-  using tracker_type  = typename reporter_type::tracker_type;
+  using tracker_type  = typename reporter_type::remote_type;
 
   nonintruded_parent_temp (void)
     : m_children (*this)
@@ -873,13 +873,13 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   print_all ();
 
   // copy constructor
-  std::unique_ptr<named1> ptr (make_unique<named1> (n1_3));
+  std::unique_ptr<named1> ptr (new named1 (n1_3));
 
   std::cout << "copy ctor: " << *ptr << std::endl;
   print_all ();
   
   // move constructor
-  make_unique<named1> (std::move (n1_2)).swap (ptr);
+  std::unique_ptr<named1> (new named1 (std::move (n1_2))).swap (ptr);
 
   std::cout << "move ctor: " << *ptr << std::endl;
   print_all ();
