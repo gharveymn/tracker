@@ -49,7 +49,7 @@ public:
   {
     if (&o != this)
       {
-        intrusive_reporter::operator=(o);
+        intrusive_reporter::operator= (o);
         m_name = o.m_name;
       }
     return *this;
@@ -149,17 +149,17 @@ public:
   using reporter_type = reporter<nonintruded_child_s, nonintruded_parent_s>;
 
   nonintruded_child_s (reporter_type::tracker_type& p, std::string name)
-    : m_reporter (this, p),
+    : m_reporter (*this, p),
       m_name (std::move (name))
   { }
 
   nonintruded_child_s (const nonintruded_child_s& other)
-    : m_reporter (this, other.m_reporter),
+    : m_reporter (*this, other.m_reporter),
       m_name (other.m_name)
   { }
 
   nonintruded_child_s (nonintruded_child_s&& other) noexcept
-    : m_reporter (this, std::move (other.m_reporter)),
+    : m_reporter (*this, std::move (other.m_reporter)),
       m_name (std::move (other.m_name))
   { }
 
@@ -209,15 +209,15 @@ public:
   using reporter_type = reporter<nonintruded_child, nonintruded_parent>;
 
   nonintruded_child (reporter_type::tracker_type& p)
-    : m_reporter (this, p)
+    : m_reporter (*this, p)
   { }
 
   nonintruded_child (const nonintruded_child& other)
-    : m_reporter (this, other.m_reporter)
+    : m_reporter (*this, other.m_reporter)
   { }
 
   nonintruded_child (nonintruded_child&& other) noexcept
-    : m_reporter (this, std::move (other.m_reporter))
+    : m_reporter (*this, std::move (other.m_reporter))
   { }
 
   nonintruded_child& operator= (const nonintruded_child& other) = default;
@@ -744,8 +744,10 @@ std::chrono::duration<double> test_multireporter (void)
   time t1 = clock::now ();
 
   self_parent p ("p");
-  self_parent q (p, "q");
-  self_parent r (q, "r");
+  self_parent q ("q");
+  self_parent r ("r");
+  bind (p, q);
+  bind (r, q);
   bind (r, p);
   
   std::cout << "initial state" << std::endl;
@@ -775,8 +777,9 @@ std::chrono::duration<double> perf_multireporter (void)
   for (std::size_t i = 0; i < num_iter; ++i)
     {
       objs.emplace_back ();
+      auto& b = objs.back ();
       std::for_each (objs.begin (), --objs.end (),
-                     [&b = objs.back ()] (anon_self_parent& a)
+                     [&b] (anon_self_parent& a)
                      {
                        bind (a, b); 
                      });
@@ -816,14 +819,16 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
     {
       a1s.emplace_back ();
       a2s.emplace_back ();
+      auto& a1 = a1s.back ();
+      auto& a2 = a2s.back ();
       std::for_each (a2s.begin (), --a2s.end (),
-                     [&a1 = a1s.back ()] (anon2& a2)
+                     [&a1] (anon2& a2)
                      {
                        a1.bind (a2);
                      });
 
       std::for_each (a1s.begin (), --a1s.end (),
-                     [&a2 = a2s.back ()] (anon1& a1)
+                     [&a2] (anon1& a1)
                      {
                        a2.bind (a1);
                      });
