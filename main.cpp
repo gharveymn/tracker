@@ -878,13 +878,13 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   print_all ();
 
   // copy constructor
-  std::unique_ptr<named1> ptr (ext::make_unique<named1> (n1_3));
+  std::unique_ptr<named1> ptr (new named1 (n1_3));
 
   std::cout << "copy ctor: " << *ptr << std::endl;
   print_all ();
   
   // move constructor
-  ext::make_unique<named1> (std::move (n1_2)).swap (ptr);
+  std::unique_ptr<named1> (new named1 (std::move (n1_2))).swap (ptr);
 
   std::cout << "move ctor: " << *ptr << std::endl;
   print_all ();

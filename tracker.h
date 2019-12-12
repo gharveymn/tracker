@@ -572,7 +572,7 @@ namespace octave
       return *this;
     }
     
-    void swap (tracker& other) noexcept 
+    void swap (tracker& other) noexcept
     {
       base_type::swap (other);
     }
@@ -584,7 +584,7 @@ namespace octave
 
     constexpr local_parent_type *get_parent (void) const noexcept
     {
-      return static_cast<local_parent_type*> (this);
+      return static_cast<local_parent_type *> (this);
     }
 
   };
@@ -594,7 +594,7 @@ namespace octave
   {
   public:
 
-    using reporter_type  = Reporter;
+    using reporter_type     = Reporter;
     using local_parent_type = LocalParent;
 
     using tracker_base_type  = tracker_base<reporter_type, local_parent_type>;
@@ -827,13 +827,18 @@ namespace octave
       using std::swap;
       std::swap (m_orphan_hook, other.m_orphan_hook);
     }
-    
-    constexpr const local_parent_type *get_parent (void) const noexcept
+
+    constexpr bool has_parent (void) const noexcept
     {
-      return downcast (this);
+      return true;
     }
 
     local_parent_type *get_parent (void) noexcept
+    {
+      return downcast (this);
+    }
+    
+    constexpr const local_parent_type *get_parent (void) const noexcept
     {
       return downcast (this);
     }
@@ -969,9 +974,9 @@ namespace octave
       swap (m_orphan_hook, other.m_orphan_hook);
     }
 
-    constexpr local_parent_type& get_child_ref (void) const noexcept
+    constexpr bool has_parent (void) const noexcept
     {
-      return *m_parent;
+      return m_parent != nullptr;
     }
 
     constexpr const local_parent_type *get_parent (void) const noexcept
@@ -1234,20 +1239,10 @@ namespace octave
                             internal_copy_reporters (other));
     }
 
-    constexpr const local_parent_type* get_parent (void) const noexcept
-    {
-      return local_tracker_type::get_parent ();
-    }
-
-    local_parent_type* get_parent (void) noexcept
-    {
-      return local_tracker_type::get_parent ();
-    }
-
     void orphan (citer it)
     {
       this->erase (it);
-      m_orphan_hook (get_parent ());
+      m_orphan_hook (local_tracker_type::get_parent ());
     }
     
   private:
