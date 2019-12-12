@@ -79,22 +79,19 @@ namespace octave
             typename Enable = void>
   class reporter_base;
 
-  template <typename Derived, typename RemoteParent, typename Remote, 
-            typename Hook>
+  template <typename Derived, typename RemoteParent, typename Remote>
   class intrusive_reporter;
 
-  template <typename LocalParent, typename RemoteParent, typename Remote,
-    typename Hook>
+  template <typename LocalParent, typename RemoteParent, typename Remote>
   class reporter;
 
   template <typename LocalSuperior, typename Remote>
   class tracker_base;
 
-  template <typename Derived, typename RemoteParent, typename Remote, typename Hook>
+  template <typename Derived, typename RemoteParent, typename Remote>
   class intrusive_tracker;
 
-  template <typename LocalParent, typename RemoteParent, typename Remote, 
-            typename Hook>
+  template <typename LocalParent, typename RemoteParent, typename Remote>
   class tracker;
 
   // RemoteTag is either `intrusive_tag` or `nonintrusive_tag`
@@ -104,31 +101,7 @@ namespace octave
             typename RemoteHook = reporter_orphan_hook<>>
   class tracker_1;
   
-  template <typename LocalParent, typename RemoteParent, typename LocalHook,
-    typename RemoteHook>
-  class multireporter;
-  
-  // defaults
-
-  template <typename Derived, typename RemoteParent, typename Remote, 
-            typename Hook = reporter_orphan_hook<>>
-  class intrusive_reporter;
-
-  template <typename LocalParent, typename RemoteParent, 
-            typename Remote = tracker_1<RemoteParent, LocalParent>,
-            typename Hook = reporter_orphan_hook<>>
-  class reporter;
-
-  template <typename Derived, typename RemoteParent, typename Remote, typename Hook>
-  class intrusive_tracker;
-  
-  template <typename LocalParent, typename RemoteParent, typename Remote = RemoteParent, 
-            typename Hook = reporter_orphan_hook<>>
-  class tracker;  
-
-  template <typename LocalParent, typename RemoteParent = LocalParent, 
-            typename LocalHook = reporter_orphan_hook<>, 
-            typename RemoteHook = reporter_orphan_hook<>>
+  template <typename LocalParent, typename RemoteParent>
   class multireporter;
   
   // support types
@@ -158,67 +131,54 @@ namespace octave
   template <typename T>
   using tracker_base_type = typename reporter_traits<T>::tracker_base_type;
 
-  template <typename Derived, typename RemoteParent, typename Remote, typename Hook>
-  struct reporter_traits<intrusive_tracker<Derived, RemoteParent, Remote, Hook>>
+  template <typename Derived, typename RemoteParent, typename Remote>
+  struct reporter_traits<intrusive_tracker<Derived, RemoteParent, Remote>>
   {
-    using type = intrusive_tracker<Derived, RemoteParent, Remote, Hook>;
+    using type = intrusive_tracker<Derived, RemoteParent, Remote>;
     using base_type = tracker_base<Derived, Remote>;
-    using intrusive_tracker_type = intrusive_tracker<Derived, RemoteParent, Remote, Hook>;
+    using intrusive_tracker_type = intrusive_tracker<Derived, RemoteParent, Remote>;
     using tracker_base_type = base_type;
   };
   
-  template <typename LocalParent, typename RemoteParent, typename Remote,
-            typename Hook>
-  struct reporter_traits<tracker<LocalParent, RemoteParent, Remote, Hook>>
+  template <typename LocalParent, typename RemoteParent, typename Remote>
+  struct reporter_traits<tracker<LocalParent, RemoteParent, Remote>>
   {
-    using type = tracker<LocalParent, RemoteParent, Remote, Hook>;
-    using base_type = intrusive_tracker<type, RemoteParent, Remote, Hook>;
+    using type = tracker<LocalParent, RemoteParent, Remote>;
+    using base_type = intrusive_tracker<type, RemoteParent, Remote>;
     using intrusive_tracker_type = base_type;
     using tracker_base_type 
       = typename reporter_traits<intrusive_tracker_type>::base_type;
   };
 
-  template <typename LocalParent, typename RemoteParent, 
-            typename LocalHook, typename RemoteHook>
-  struct reporter_traits<tracker_1<LocalParent, RemoteParent, intrusive_tag, 
-                                   LocalHook, RemoteHook>>
+  template <typename LocalParent, typename RemoteParent>
+  struct reporter_traits<tracker_1<LocalParent, RemoteParent, intrusive_tag>>
   {
-    using base_type = tracker<LocalParent, RemoteParent, 
-                              RemoteParent, LocalHook>;
+    using type = tracker_1<LocalParent, RemoteParent, intrusive_tag>;
+    using base_type = tracker<LocalParent, RemoteParent, RemoteParent>;
     using intrusive_tracker_type
       = typename reporter_traits<base_type>::intrusive_tracker_type;
     using tracker_base_type
       = typename reporter_traits<base_type>::tracker_base_type;
   };
 
-  template <typename LocalParent, typename RemoteParent, 
-            typename LocalHook, typename RemoteHook>
-  struct reporter_traits<tracker_1<LocalParent, RemoteParent, nonintrusive_tag,
-    LocalHook, RemoteHook>>
+  template <typename LocalParent, typename RemoteParent>
+  struct reporter_traits<tracker_1<LocalParent, RemoteParent, nonintrusive_tag>>
   {
+    using type = tracker_1<LocalParent, RemoteParent, nonintrusive_tag>;
     using base_type = tracker<LocalParent, RemoteParent,
-      reporter<RemoteParent, LocalParent,
-        tracker_1<LocalParent, RemoteParent,
-          nonintrusive_tag, LocalHook,
-          RemoteHook>,
-        RemoteHook>,
-      LocalHook>;
+                              reporter<RemoteParent, LocalParent, type>>;
     using intrusive_tracker_type
       = typename reporter_traits<base_type>::intrusive_tracker_type;
     using tracker_base_type
       = typename reporter_traits<base_type>::tracker_base_type;
   };
   
-  template <typename LocalParent, typename RemoteParent, typename LocalHook,
-            typename RemoteHook>
-  struct reporter_traits<multireporter<LocalParent, RemoteParent, 
-                                       LocalHook, RemoteHook>>
+  template <typename LocalParent, typename RemoteParent>
+  struct reporter_traits<multireporter<LocalParent, RemoteParent>>
   {
     using base_type 
       = tracker<LocalParent, RemoteParent,
-                multireporter<RemoteParent, LocalParent, 
-                              RemoteHook, LocalHook>,
-                LocalHook>;
+                multireporter<RemoteParent, LocalParent>>;
     using intrusive_tracker_type 
       = typename reporter_traits<base_type>::intrusive_tracker_type;
     using tracker_base_type 
@@ -575,8 +535,7 @@ namespace octave
 
   };
 
-  template <typename Derived, typename RemoteParent, typename Remote, 
-            typename Hook>
+  template <typename Derived, typename RemoteParent, typename Remote>
   class intrusive_reporter 
     : public reporter_base<Derived, Remote>
   {
@@ -588,64 +547,17 @@ namespace octave
     using remote_type         = Remote;
 //    using remote_base_type    = typename Tracker::base_type;
     
-    using hook_type           = Hook;
     using intrusive_base_type = intrusive_reporter;
     using base_type           = reporter_base<Derived, remote_type>;
 
 //    static_assert (std::is_base_of<remote_base_type, remote_type>::value,
 //                   "tracker base has unexpected type");
 
-    static_assert (noexcept (std::declval<hook_type> ()()), 
-                   "The hook must be noexcept.");
-
-    intrusive_reporter (void) noexcept { }
-
-    explicit intrusive_reporter (remote_type& tkr)
-      : base_type (tkr)
-    { }
-
-    explicit intrusive_reporter (remote_type& tkr, const hook_type& hook)
-      : base_type (tkr),
-        m_orphan_hook (hook)
-    { }
-
-    explicit intrusive_reporter (remote_type& tkr, hook_type&& hook)
-      : base_type (tkr),
-        m_orphan_hook (std::move (hook))
-    { }
-
-    intrusive_reporter (const intrusive_reporter& other)
-      : base_type (other),
-        m_orphan_hook (other.m_orphan_hook)
-    { }
-
-    intrusive_reporter (intrusive_reporter&& other) noexcept
-      : base_type (std::move (other)),
-        m_orphan_hook (std::move (other.m_orphan_hook))
-    { }
-
-    intrusive_reporter& operator= (const intrusive_reporter& other)
-    {
-      if (&other != this)
-        {
-          base_type::operator= (other);
-          m_orphan_hook = other.m_orphan_hook;
-        }
-      return *this;
-    }
-
-    intrusive_reporter& operator= (intrusive_reporter&& other) noexcept
-    {
-      base_type::operator= (std::move (other));
-      m_orphan_hook = std::move (other.m_orphan_hook);
-      return *this;
-    }
-    
-//    ~intrusive_reporter (void) noexcept (noexcept (hook_type::operator()))
-//    {
-//      if (has_remote ())
-//        base_type::orphan_remote ();
-//    }
+    intrusive_reporter            (void)                          = default;
+    intrusive_reporter            (const intrusive_reporter&)     = default;
+    intrusive_reporter            (intrusive_reporter&&) noexcept = default;
+    intrusive_reporter& operator= (const intrusive_reporter&)     = default;
+    intrusive_reporter& operator= (intrusive_reporter&&) noexcept = default;
 
     ~intrusive_reporter (void) noexcept
     {
@@ -653,12 +565,11 @@ namespace octave
         base_type::orphan_remote ();
     }
 
-    void swap (intrusive_reporter& other)
-    {
-      base_type::swap (other);
-      using std::swap;
-      swap (m_orphan_hook, other.m_orphan_hook);
-    }
+    explicit intrusive_reporter (remote_type& tkr)
+      : base_type (tkr)
+    { }
+    
+    using base_type::swap;
 
     constexpr bool has_remote (void) const noexcept
     {
@@ -730,20 +641,12 @@ namespace octave
       m_orphan_hook (*this);
     }
 
-  private:
-
-    // m_orphan_hook is invoked immediately after the remote loses tracking 
-    // for this. The remote parent is passed to it.
-    hook_type m_orphan_hook = hook_type { };
-
   };
 
   //! non-intrusive; for use as a class member
-  template <typename LocalParent, typename RemoteParent, typename Remote,
-            typename Hook>
+  template <typename LocalParent, typename RemoteParent, typename Remote>
   class reporter : public intrusive_reporter<
-    reporter<LocalParent, RemoteParent, Remote, Hook>, RemoteParent, 
-    Remote, Hook>
+    reporter<LocalParent, RemoteParent, Remote>, RemoteParent, Remote>
   {
   public:
     
@@ -753,9 +656,8 @@ namespace octave
     using remote_parent_type  = RemoteParent;
     using remote_type         = Remote;
 
-    using hook_type           = Hook;
     using intrusive_base_type = intrusive_reporter<reporter, RemoteParent, 
-                                                   Remote, Hook>;
+                                                   Remote>;
 
 //    static_assert (std::is_base_of<remote_base_type, remote_type>::value,
 //                   "tracker base has unexpected type");
@@ -766,28 +668,8 @@ namespace octave
       : intrusive_base_type (tkr)
     { }
 
-    explicit reporter (remote_type& tkr, const hook_type& hook)
-      : intrusive_base_type (tkr, hook)
-    { }
-
-    explicit reporter (remote_type& tkr, hook_type&& hook)
-      : intrusive_base_type (tkr, std::move (hook))
-    { }
-
     explicit reporter (local_parent_type& parent, remote_type& tkr)
       : intrusive_base_type (tkr),
-        m_local_parent (&parent)
-    { }
-
-    explicit reporter (local_parent_type& parent, remote_type& tkr, 
-                       const hook_type& hook)
-      : intrusive_base_type (tkr, hook),
-        m_local_parent (&parent)
-    { }
-
-    explicit reporter (local_parent_type& parent, remote_type& tkr, 
-                       hook_type&& hook)
-      : intrusive_base_type (tkr,std::move (hook)),
         m_local_parent (&parent)
     { }
 
@@ -1004,8 +886,7 @@ namespace octave
 
   };  
 
-  template <typename Derived, typename RemoteParent, typename Remote, 
-            typename Hook>
+  template <typename Derived, typename RemoteParent, typename Remote>
   class intrusive_tracker 
     : public tracker_base<Derived, Remote>
   {
@@ -1013,22 +894,18 @@ namespace octave
     
     using remote_parent_type = RemoteParent;
     using remote_type        = Remote;
-    using hook_type          = Hook;
 
     using base_type = tracker_base<Derived, remote_type>;
     
     using internal_iter = typename base_type::internal_iter;
     using internal_citer = typename base_type::internal_citer;
     
-    intrusive_tracker (void) = default;
-
-    explicit intrusive_tracker (hook_type& hook)
-      : m_orphan_hook (hook)
-    { }
-
-    explicit intrusive_tracker (hook_type&& hook)
-      : m_orphan_hook (std::move (hook))
-    { }
+    intrusive_tracker            (void)                         = default;
+    intrusive_tracker            (const intrusive_tracker&)     = delete;
+    intrusive_tracker            (intrusive_tracker&&) noexcept = default;
+    intrusive_tracker& operator= (const intrusive_tracker&)     = delete;
+    intrusive_tracker& operator= (intrusive_tracker&&) noexcept = default;
+    ~intrusive_tracker           (void)                         = default;
 
 //    template <typename 
 //      std::enable_if<is_type<multireporter, remote_type>::value>::type* = nullptr>
@@ -1036,13 +913,6 @@ namespace octave
 //      : base_type (other),
 //        m_orphan_hook (other.m_orphan_hook)
 //    { }
-
-    intrusive_tracker (const intrusive_tracker& other) = delete; 
-
-    intrusive_tracker (intrusive_tracker&& other) noexcept
-      : base_type (std::move (other)),
-        m_orphan_hook (std::move (other.m_orphan_hook))
-    { }
 
 //    template <typename
 //      std::enable_if<is_type<multireporter, remote_type>::value>::type* = nullptr>
@@ -1056,21 +926,7 @@ namespace octave
 //      return *this;
 //    }
 
-    intrusive_tracker& operator= (const intrusive_tracker& other)  = delete;
-    
-    intrusive_tracker& operator= (intrusive_tracker&& other) noexcept
-    {
-      base_type::operator= (std::move (other));
-      m_orphan_hook = std::move (other.m_orphan_hook);
-      return *this;
-    }
-
-    void swap (intrusive_tracker& other) noexcept
-    {
-      base_type::swap (other);
-      using std::swap;
-      swap (m_orphan_hook, other.m_orphan_hook); // caution!
-    }
+    using base_type::swap;
 
     using iter   = reporter_iterator<internal_citer, remote_parent_type, remote_type>;
     using citer  = iter;
@@ -1144,72 +1000,34 @@ namespace octave
       return const_cast<intrusive_tracker *> (this);
     }
     
-    constexpr hook_type& get_hook (void) const noexcept 
-    {
-      return m_orphan_hook;
-    }
-    
     std::size_t get_offset (citer pos) const noexcept 
     {
       return std::distance (base_type::internal_cbegin (), 
                             internal_citer (pos));
     }
-    
-  protected:
-    
-    void copy_hook (const intrusive_tracker& other)
-    {
-      m_orphan_hook = other.m_orphan_hook;
-    }
-    
-  private:
-    
-    hook_type m_orphan_hook = hook_type { };
-    
   };
 
-  template <typename LocalParent, typename RemoteParent, typename Remote,
-            typename Hook>
+  template <typename LocalParent, typename RemoteParent, typename Remote>
   class tracker 
-    : public intrusive_tracker<tracker<LocalParent, RemoteParent, 
-                                       Remote, Hook>, 
-                               RemoteParent, Remote, Hook>
+    : public intrusive_tracker<tracker<LocalParent, RemoteParent, Remote>, 
+                               RemoteParent, Remote>
   {
   public:
 
     using local_parent_type  = LocalParent;
     using remote_parent_type = RemoteParent;
     using remote_type        = Remote;
-    using hook_type          = Hook;
 
-    using base_type = intrusive_tracker<tracker, RemoteParent, Remote, Hook>;
+    using base_type = intrusive_tracker<tracker, RemoteParent, Remote>;
     using intrusive_tracker_type = base_type;
     using tracker_base_type      = tracker_base<intrusive_tracker_type, Remote>;
     
     explicit tracker (void) = default;
-
-    explicit tracker (const hook_type& hook)
-      : base_type (hook)
-    { }
-
-    explicit tracker (hook_type&& hook)
-      : base_type (std::move (hook))
-    { }
-
+    
     explicit tracker (local_parent_type& parent)
       : m_parent (&parent)
     { }
-
-    explicit tracker (local_parent_type& parent, const hook_type& hook)
-      : base_type (hook),
-        m_parent (&parent)
-    { }
-
-    explicit tracker (local_parent_type& parent, hook_type&& hook)
-      : base_type (std::move (hook)),
-        m_parent (&parent)
-    { }
-
+    
     tracker (const tracker&) = delete;
 
     tracker (tracker&& other) noexcept
@@ -1264,9 +1082,8 @@ namespace octave
     
   protected:
     
-    explicit tracker (local_parent_type *parent, const hook_type& hook)
-      : base_type (hook),
-        m_parent (parent)
+    explicit tracker (local_parent_type *parent)
+      : m_parent (parent)
     { }
 
   private:
@@ -1275,23 +1092,19 @@ namespace octave
 
   };
   
-  template <typename LocalParent, typename RemoteParent, typename LocalHook, 
-            typename RemoteHook>
+  template <typename LocalParent, typename RemoteParent>
   class multireporter
     : public tracker<LocalParent, RemoteParent, 
-        multireporter<RemoteParent, LocalParent, RemoteHook, LocalHook>, 
-        LocalHook>
+                     multireporter<RemoteParent, LocalParent>>
   {
   public:
     
     using local_parent_type  = LocalParent;
     using remote_parent_type = RemoteParent;
-    using hook_type          = LocalHook;
-    using remote_type        = multireporter<RemoteParent, LocalParent, 
-                                             RemoteHook, LocalHook>;
+    using remote_type        = multireporter<RemoteParent, LocalParent>;
     
     using base_type = tracker<local_parent_type, remote_parent_type, 
-                              remote_type, hook_type>;
+                              remote_type>;
     
   private:
     
@@ -1306,42 +1119,12 @@ namespace octave
              noexcept (std::is_nothrow_default_constructible<base_type>::value)
       = default;
 
-    explicit multireporter (const hook_type& hook)
-      : base_type (hook)
-    { }
-
-    explicit multireporter (hook_type&& hook)
-      : base_type (std::move (hook))
-    { }
-
     explicit multireporter (local_parent_type& parent)
       : base_type (parent)
       { }
 
-    explicit multireporter (local_parent_type& parent, const hook_type& hook)
-      : base_type (parent, hook)
-    { }
-
-    explicit multireporter (local_parent_type& parent, hook_type&& hook)
-      : base_type (parent, std::move (hook))
-    { }
-
     explicit multireporter (local_parent_type& parent, remote_type& remote)
       : base_type (parent)
-    {
-      internal_bind (remote);
-    }
-
-    explicit multireporter (local_parent_type& parent, remote_type& remote,
-                            hook_type& hook)
-      : base_type (parent, hook)
-    {
-      internal_bind (remote);
-    }
-
-    explicit multireporter (local_parent_type& parent, remote_type& remote,
-                            hook_type&& hook)
-      : base_type (parent, std::move (hook))
     {
       internal_bind (remote);
     }
@@ -1365,7 +1148,7 @@ namespace octave
     }
 
     multireporter (local_parent_type& parent, const multireporter& other)
-      : base_type (parent, other.get_hook ())
+      : base_type (parent)
     {
       try
         {
@@ -1497,37 +1280,48 @@ namespace octave
     l.bind (r);
   }
 
-  template <typename LocalParent, typename RemoteParent, 
-            typename LocalHook, typename RemoteHook>
-  class tracker_1<LocalParent, RemoteParent, intrusive_tag, 
-                  LocalHook, RemoteHook>
-    : public tracker<LocalParent, RemoteParent, RemoteParent, LocalHook>
+  template <typename LocalParent, typename RemoteParent>
+  class tracker_1<LocalParent, RemoteParent, intrusive_tag>
+    : public tracker<LocalParent, RemoteParent, RemoteParent>
   {
   public:
     using base_type = tracker<LocalParent, RemoteParent, 
-                              RemoteParent, LocalHook>;
-    using tracker<LocalParent, RemoteParent, RemoteParent, LocalHook>::tracker;
+                              RemoteParent>;
+    using tracker<LocalParent, RemoteParent, RemoteParent>::tracker;
   };
 
-  template <typename LocalParent, typename RemoteParent,
-            typename LocalHook, typename RemoteHook>
-  class tracker_1<LocalParent, RemoteParent, nonintrusive_tag, 
-                  LocalHook, RemoteHook>
+  template <typename LocalParent, typename RemoteParent>
+  class tracker_1<LocalParent, RemoteParent, nonintrusive_tag>
     : public tracker<LocalParent, RemoteParent, 
                      reporter<RemoteParent, LocalParent,
                               tracker_1<LocalParent, RemoteParent,
-                                        nonintrusive_tag, LocalHook, 
-                                        RemoteHook>, 
-                              RemoteHook>,
-                     LocalHook>
+                                        nonintrusive_tag>>>
   {
   public:
     using remote_type = reporter<RemoteParent, LocalParent, 
-                                 tracker_1, RemoteHook>;
+                                 tracker_1>;
     using base_type = tracker<LocalParent, RemoteParent, 
-                              remote_type, LocalHook>;
-    using tracker<LocalParent, RemoteParent, remote_type, LocalHook>::tracker;
+                              remote_type>;
+    using tracker<LocalParent, RemoteParent, remote_type>::tracker;
   };
+
+  // defaults
+
+  template <typename Derived, typename RemoteParent, typename Remote>
+  class intrusive_reporter;
+
+  template <typename LocalParent, typename RemoteParent,
+    typename Remote = tracker_1<RemoteParent, LocalParent>>
+  class reporter;
+
+  template <typename Derived, typename RemoteParent, typename Remote>
+  class intrusive_tracker;
+
+  template <typename LocalParent, typename RemoteParent, typename Remote = RemoteParent>
+  class tracker;
+
+  template <typename LocalParent, typename RemoteParent = LocalParent>
+  class multireporter;
   
 }
 
