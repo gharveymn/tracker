@@ -5,6 +5,7 @@
 #include <chrono>
 #include <random>
 #include <list>
+#include <sstream>
 
 #include "tracker.h"
 
@@ -563,6 +564,13 @@ public:
   const std::string& get_name (void) const noexcept { return m_name; }
 
   friend std::ostream& operator<< (std::ostream& o, const named1& p);
+  
+  std::string print (void) const noexcept 
+  {
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str ();
+  }
 
 private:
 
@@ -623,6 +631,13 @@ public:
 
   friend std::ostream& operator<< (std::ostream& o, const named2& p);
 
+  std::string print (void) const noexcept
+  {
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str ();
+  }
+
 private:
 
   multireporter<named2, named1> m_tracker;
@@ -649,6 +664,7 @@ bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
 
 std::ostream& operator<< (std::ostream& o, const named1& p)
 {
+  o.width (4);
   o << p.m_name << ": { ";
   for (const named2& c : p.m_tracker)
     o << c.get_name () << " ";
@@ -657,6 +673,7 @@ std::ostream& operator<< (std::ostream& o, const named1& p)
 
 std::ostream& operator<< (std::ostream& o, const named2& p)
 {
+  o.width (4);
   o << p.m_name << ": { ";
   for (const named1& c : p.m_tracker)
     o << c.get_name () << " ";
@@ -874,12 +891,21 @@ std::chrono::duration<double> test_disparate_multireporter (void)
 
   auto print_all = [&] (void)
   {
-    std::cout << n1_1 << " | ";
-    std::cout << n1_2 << " | ";
-    std::cout << n1_3 << std::endl;
-    std::cout << n2_1 << " | ";
-    std::cout << n2_2 << " | ";
-    std::cout << n2_3 << std::endl << std::endl;
+    constexpr std::size_t w = 29;
+    std::stringstream oss;
+    std::cout << std::left;
+    std::cout.width (w);
+    std::cout << n1_1.print () << " | ";
+    std::cout.width (w);
+    std::cout << n1_2.print () << " | ";
+    std::cout.width (w);
+    std::cout << n1_3.print () << std::endl;
+    std::cout.width (w);
+    std::cout << n2_1.print () << " | ";
+    std::cout.width (w);
+    std::cout << n2_2.print () << " | ";
+    std::cout.width (w);
+    std::cout << n2_3.print () << std::endl << std::endl;
   };
 
   std::cout << "initial state" << std::endl;

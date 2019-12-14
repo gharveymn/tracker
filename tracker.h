@@ -85,14 +85,14 @@ namespace octave
 
   template <typename LocalParent, typename RemoteParent, template <typename...> class Remote>
   class tracker;
-
-  // RemoteTag is either `intrusive_tag` or `nonintrusive_tag`
-  template <typename LocalParent, typename RemoteParent, 
-            typename RemoteTag = nonintrusive_tag>
-  class tracker_1;
   
   template <typename LocalParent, typename RemoteParent, typename Dummy>
   class multireporter;
+
+//  // RemoteTag is either `intrusive_tag` or `nonintrusive_tag`
+//  template <typename LocalParent, typename RemoteParent, 
+//            typename RemoteTag = nonintrusive_tag>
+//  class tracker_1;
 
   template <typename Derived, typename RemoteParent, typename Remote>
   class intrusive_reporter;
@@ -101,7 +101,9 @@ namespace octave
     typename Remote = tracker<RemoteParent, LocalParent, reporter>>
   class reporter;
 
-  template <typename Derived, typename RemoteParent, template <typename ...> class Remote, typename LocalParent = Derived>
+  template <typename Derived, typename RemoteParent, 
+            template <typename ...> class Remote, 
+            typename LocalParent = Derived>
   class intrusive_tracker;
 
   template <typename LocalParent, typename RemoteParent,
@@ -225,85 +227,6 @@ namespace octave
     using abs_base_type 
       = typename reporter_traits<base_type>::abs_base_type;
     using superior_type = abs_base_type;
-  };
-  
-  // Replace with std::optional in C++17. Don't use this for anything else.
-  template <typename T>
-  struct trivial_optional
-  {
-    trivial_optional            (void)                              = default;
-    trivial_optional            (const trivial_optional&)           = default;
-    trivial_optional            (trivial_optional&& other) noexcept = default;
-    trivial_optional& operator= (const trivial_optional&)           = default;
-    trivial_optional& operator= (trivial_optional&& other) noexcept = default;
-    ~trivial_optional           (void)                              = default;
-    
-    template <typename U = T>
-    explicit trivial_optional (U&& val)
-      : m_val (std::forward<U> (val)),
-        m_is_init (true)
-    { }
-
-    template <typename U = T>
-    trivial_optional& operator= (U&& val)
-    {
-      m_val.operator= (std::forward<U> (val));
-      m_is_init = true;
-    }
-
-    constexpr explicit operator bool() const noexcept
-    {
-      return m_is_init;
-    }
-    
-    constexpr bool has_value (void) const noexcept 
-    {
-      return m_is_init;
-    }
-
-    constexpr const T * operator-> (void) const
-    {
-      return &m_val;
-    }
-
-    T * operator-> (void)
-    {
-      return &m_val;
-    }
-    
-    constexpr const T& operator* (void) const&
-    {
-      return m_val;
-    }
-
-    T& operator* (void) &
-    {
-      return m_val;
-    }
-
-    constexpr const T&& operator* (void) const&&
-    {
-      return m_val;
-    }
-
-    T&& operator* (void) &&
-    {
-      return m_val;
-    }
-    
-    void reset (void) noexcept
-    {
-      if (m_is_init)
-        {
-          m_is_init = false;
-          m_val.~T ();
-        }
-    }
-    
-  private:
-    T    m_val;
-    bool m_is_init = false;
-    
   };
 
   // pretend like reporter_base doesn't exist
@@ -724,7 +647,7 @@ namespace octave
     {
       if (&other != this)
         {
-          base_type::operator= (other);
+          base_type::operator= (std::move (other));
           if (this->is_tracked ())
             this->get_remote_reporter ()->reset_remote (this);
         }
@@ -899,6 +822,7 @@ namespace octave
 
     tracker_base& operator= (tracker_base&& other) noexcept
     {
+      reset ();
       internal_transfer_from (std::move (other));
       return *this;
     }
@@ -1170,7 +1094,7 @@ namespace octave
     tracker            (const tracker&)     = delete;
     tracker            (tracker&&) noexcept = default;
     tracker& operator= (const tracker&)     = delete;
-    tracker& operator= (tracker&&) noexcept = default;
+//  tracker& operator= (tracker&&) noexcept = impl;
     ~tracker           (void)               = default;
     
     explicit tracker (local_parent_type& parent)
@@ -1183,6 +1107,13 @@ namespace octave
       : base_type (std::move (other)),
         m_parent (&new_parent)
     { }
+    
+    // explicitly defined so that m_parent doesn't get implicitly reset
+    tracker& operator= (tracker&& other) noexcept
+    {
+      base_type::operator= (std::move (other));
+      return *this;
+    }
     
     void swap (tracker& other) noexcept 
     {
@@ -1244,7 +1175,7 @@ namespace octave
 
     explicit multireporter (local_parent_type& parent)
       : base_type (parent)
-      { }
+    { }
 
     explicit multireporter (local_parent_type& parent, remote_type& remote)
       : base_type (parent)
