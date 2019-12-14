@@ -296,6 +296,7 @@ namespace octave
 
     tracker_base& operator= (tracker_base&& other) noexcept
     {
+      reset ();
       transfer_from (std::move (other));
       return *this;
     }
@@ -771,6 +772,7 @@ namespace octave
     using tracker_type      = tracker<derived_type, remote_parent_type, 
                                       local_parent_type>;
     using tracker_base_type = typename tracker_type::base_type;
+    using remote_type = tracker_type;
 
     static_assert (std::is_same<tracker_base_type,
                                 tracker_base<derived_type, local_parent_type>>::value,
@@ -894,6 +896,7 @@ namespace octave
     using base_type          = reporter_base<reporter, local_parent_type>;
     using tracker_type       = tracker<reporter, remote_parent_type, 
                                        local_parent_type>;
+    using remote_type = tracker_type;
 
     static_assert (std::is_same<tracker_type,
                            tracker<reporter, remote_parent_type, 
@@ -1158,9 +1161,15 @@ namespace octave
 
     multireporter (void) = default;
 
-    explicit multireporter (local_parent_type& cld)
-      : local_tracker_type (cld)
+    explicit multireporter (local_parent_type& parent)
+      : local_tracker_type (parent)
     { }
+
+    explicit multireporter (local_parent_type& parent, remote_type& remote)
+      : local_tracker_type (parent)
+    {
+      internal_bind (remote);
+    }
 
     explicit multireporter (const hook_type& hook)
       : m_orphan_hook (hook)
