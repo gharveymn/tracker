@@ -94,7 +94,8 @@ namespace octave
 //            typename RemoteTag = nonintrusive_tag>
 //  class tracker_1;
 
-  template <typename Derived, typename RemoteParent, typename Remote>
+  template <typename Derived, typename RemoteParent,
+    typename Remote = tracker<RemoteParent, Derived, intrusive_reporter>>
   class intrusive_reporter;
 
   template <typename LocalParent, typename RemoteParent,
@@ -844,7 +845,6 @@ namespace octave
 
     void orphan (internal_iter it)
     {
-//      std::cout << reinterpret_cast<void *> (&*it) << std::endl;
       this->erase (it);
     }
     
