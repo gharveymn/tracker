@@ -4,7 +4,6 @@
 #include <vector>
 #include <chrono>
 #include <random>
-#include <ext/memory>
 #include <list>
 
 #include "tracker.h"
@@ -49,7 +48,7 @@ public:
   {
     if (&o != this)
       {
-        intrusive_reporter::operator= (o);
+        intrusive_reporter::operator=(o);
         m_name = o.m_name;
       }
     return *this;
@@ -148,18 +147,18 @@ public:
 
   using reporter_type = reporter<nonintruded_child_s, nonintruded_parent_s>;
 
-  nonintruded_child_s (reporter_type::tracker_type& p, std::string name)
-    : m_reporter (*this, p),
+  nonintruded_child_s (reporter_type::tracker_type& remote, std::string name)
+    : m_reporter (remote, *this),
       m_name (std::move (name))
   { }
 
   nonintruded_child_s (const nonintruded_child_s& other)
-    : m_reporter (*this, other.m_reporter),
+    : m_reporter (other.m_reporter, *this),
       m_name (other.m_name)
   { }
 
   nonintruded_child_s (nonintruded_child_s&& other) noexcept
-    : m_reporter (*this, std::move (other.m_reporter)),
+    : m_reporter (std::move (other.m_reporter), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -209,15 +208,15 @@ public:
   using reporter_type = reporter<nonintruded_child, nonintruded_parent>;
 
   nonintruded_child (reporter_type::tracker_type& p)
-    : m_reporter (*this, p)
+    : m_reporter (p, *this)
   { }
 
   nonintruded_child (const nonintruded_child& other)
-    : m_reporter (*this, other.m_reporter)
+    : m_reporter (other.m_reporter, *this)
   { }
 
   nonintruded_child (nonintruded_child&& other) noexcept
-    : m_reporter (*this, std::move (other.m_reporter))
+    : m_reporter (std::move (other.m_reporter), *this)
   { }
 
   nonintruded_child& operator= (const nonintruded_child& other) = default;
@@ -318,7 +317,7 @@ public:
   { }
 
   explicit self_parent (self_parent& p, std::string name)
-    : m_tracker (*this, p.m_tracker),
+    : m_tracker (p.m_tracker, *this),
       m_name (std::move (name))
   { }
 
@@ -329,7 +328,7 @@ public:
 //  { }
 
   self_parent (self_parent&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker)),
+    : m_tracker (std::move (other.m_tracker), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -345,6 +344,11 @@ public:
   friend void bind (self_parent& l, self_parent& r)
   {
     bind (l.m_tracker, r.m_tracker);
+  }
+  
+  std::size_t num_reporters (void) const noexcept
+  {
+    return m_tracker.num_reporters ();
   }
 
   self_parent& operator= (self_parent&& other) noexcept
@@ -380,7 +384,7 @@ public:
   anon_self_parent (const anon_self_parent& other) = delete;
 
   anon_self_parent (anon_self_parent&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker))
+    : m_tracker (std::move (other.m_tracker), *this)
   { }
 
   anon_self_parent& operator= (const anon_self_parent& other) = delete;
@@ -426,7 +430,7 @@ public:
   anon1 (const anon_self_parent& other) = delete;
 
   anon1 (anon1&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker))
+    : m_tracker (std::move (other.m_tracker), *this)
   { }
 
   anon1& operator= (const anon1& other) = delete;
@@ -466,7 +470,7 @@ public:
   anon2 (const anon2& other) = delete;
 
   anon2 (anon2&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker))
+    : m_tracker (std::move (other.m_tracker), *this)
   { }
 
   anon2& operator= (const anon2& other) = delete;
@@ -518,12 +522,12 @@ public:
   { }
 
   named1 (const named1& other)
-    : m_tracker (*this, other.m_tracker),
+    : m_tracker (other.m_tracker, *this),
       m_name (other.m_name)
   { }
 
   named1 (named1&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker)),
+    : m_tracker (std::move (other.m_tracker), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -577,12 +581,12 @@ public:
   { }
 
   named2 (const named2& other)
-    : m_tracker (*this, other.m_tracker),
+    : m_tracker (other.m_tracker, *this),
       m_name (other.m_name)
   { }
 
   named2 (named2&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker)),
+    : m_tracker (std::move (other.m_tracker), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -1042,29 +1046,36 @@ std::chrono::duration<double> test_reporter (void)
 
 int main()
 {
-  
-  std::cout << test_reporter <child, parent> ().count () << std::endl;
-  std::cout << test_reporter <nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
+  try
+    {
+      std::cout << test_reporter <child, parent> ().count () << std::endl;
+      std::cout << test_reporter <nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
 
-  std::cout << perf_create<child, parent> ().count () << std::endl;
-  std::cout << perf_create<nonintruded_child, nonintruded_parent> ().count () << std::endl;
+      std::cout << perf_create<child, parent> ().count () << std::endl;
+      std::cout << perf_create<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
-  std::cout << perf_access<child, parent> ().count () << std::endl;
-  std::cout << perf_access<nonintruded_child, nonintruded_parent> ().count () << std::endl;
-  
-  plf::list<int> x = { 1, 2, 3, 4 };
-  plf::list<int>::iterator last = --x.end ();
-  std::reverse_iterator<plf::list<int>::iterator> rb (x.end ());
-  std::cout << (*last == *rb) << std::endl;
-  
-  test_multireporter ();
+      std::cout << perf_access<child, parent> ().count () << std::endl;
+      std::cout << perf_access<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
-  std::cout << perf_multireporter ().count () << std::endl;
-  std::cout << perf_disparate_multireporter ().count () << std::endl;
-  
-  test_disparate_multireporter ();
-  test_binding ();
+      plf::list<int> x = { 1, 2, 3, 4 };
+      plf::list<int>::iterator last = --x.end ();
+      std::reverse_iterator<plf::list<int>::iterator> rb (x.end ());
+      std::cout << (*last == *rb) << std::endl;
 
+      test_multireporter ();
+
+      std::cout << perf_multireporter ().count () << std::endl;
+      std::cout << perf_disparate_multireporter ().count () << std::endl;
+
+      test_disparate_multireporter ();
+      test_binding ();
+    }
+    catch (std::exception& e)
+      {
+        std::cout << e.what () << std::endl;
+        return 1;
+      }
+      
   return 0;
 
 }

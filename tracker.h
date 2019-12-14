@@ -485,14 +485,14 @@ namespace octave
       : m_parent (&parent)
     { }
 
-    tracker (const tracker&)                                = delete;
-    tracker (local_parent_type& new_parent, const tracker& other) = delete;
+    tracker (const tracker&)                                      = delete;
+    tracker (const tracker& other, local_parent_type& new_parent) = delete;
 
     tracker (tracker&& other) noexcept
       : base_type (std::move (other))
     { }
 
-    tracker (local_parent_type& new_parent, tracker&& other) noexcept
+    tracker (tracker&& other, local_parent_type& new_parent) noexcept
       : base_type (std::move (other)),
         m_parent (&new_parent)
     { }
@@ -906,19 +906,19 @@ namespace octave
       : base_type (tkr)
     { }
 
-    explicit reporter (local_parent_type& parent, tracker_type& tkr)
+    explicit reporter (tracker_type& tkr, local_parent_type& parent)
       : base_type (tkr),
         m_parent (&parent)
     { }
 
-    explicit reporter (local_parent_type& parent, tracker_type& tkr, 
+    explicit reporter (tracker_type& tkr, local_parent_type& parent,
                        const hook_type& hook)
       : base_type (tkr),
         m_parent (&parent),
         m_orphan_hook (hook)
     { }
 
-    explicit reporter (local_parent_type& parent, tracker_type& tkr, hook_type&& hook)
+    explicit reporter (tracker_type& tkr, local_parent_type& parent, hook_type&& hook)
       : base_type (tkr),
         m_parent (&parent),
         m_orphan_hook (std::move (hook))
@@ -937,13 +937,13 @@ namespace octave
     reporter (const reporter&)            = delete;
     reporter (reporter&&) noexcept        = delete;
 
-    reporter (local_parent_type& new_parent, const reporter& other)
+    reporter (const reporter& other, local_parent_type& new_parent)
       : base_type (other),
         m_parent (&new_parent),
         m_orphan_hook (other.m_orphan_hook)
     { }
 
-    reporter (local_parent_type& new_parent, reporter&& other) noexcept
+    reporter (reporter&& other, local_parent_type& new_parent) noexcept
       : base_type (std::move (other)),
         m_parent (&new_parent),
         m_orphan_hook (std::move (other.m_orphan_hook))
@@ -1187,7 +1187,7 @@ namespace octave
       overwrite_reporters (other);
     }
 
-    multireporter (local_parent_type& parent, const multireporter& other)
+    multireporter (const multireporter& other, local_parent_type& parent)
       : local_tracker_type (parent),
         m_orphan_hook (other.m_orphan_hook)
     {
@@ -1199,8 +1199,8 @@ namespace octave
         m_orphan_hook (std::move (other.m_orphan_hook))
     { }
 
-    multireporter (local_parent_type& parent, multireporter&& other) noexcept
-      : local_tracker_type (parent, std::move (other)),
+    multireporter (multireporter&& other, local_parent_type& parent) noexcept
+      : local_tracker_type (std::move (other), parent),
         m_orphan_hook (std::move (other.m_orphan_hook))
     { }
     

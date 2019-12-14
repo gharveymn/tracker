@@ -6,14 +6,13 @@ SET(CMAKE_CXX_EXTENSIONS OFF)
 
 INCLUDE_DIRECTORIES(../plf_list)
 INCLUDE_DIRECTORIES(../octave-ir)
-INCLUDE_DIRECTORIES(../octave-ir/external/cpp-extensions/include)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+#    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+#    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
     # using Intel C++
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
