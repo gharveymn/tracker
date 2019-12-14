@@ -95,7 +95,7 @@ public:
 
 //  child create (std::string s)
 //  {
-//    return { *this, std::move (s) };
+//    return { std::move (s, *this) };
 //  }
 
   friend void child::rebind (parent&);
@@ -148,17 +148,17 @@ public:
   using reporter_type = reporter<nonintruded_child_s, nonintruded_parent_s>;
 
   nonintruded_child_s (reporter_type::remote_type& remote, std::string name)
-    : m_reporter (*this, remote),
+    : m_reporter (remote, *this),
       m_name (std::move (name))
   { }
 
   nonintruded_child_s (const nonintruded_child_s& other)
-    : m_reporter (*this, other.m_reporter),
+    : m_reporter (other.m_reporter, *this),
       m_name (other.m_name)
   { }
 
   nonintruded_child_s (nonintruded_child_s&& other) noexcept
-    : m_reporter (*this, std::move (other.m_reporter)),
+    : m_reporter (std::move (other.m_reporter), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -208,15 +208,15 @@ public:
   using reporter_type = reporter<nonintruded_child, nonintruded_parent>;
 
   nonintruded_child (reporter_type::remote_type& p)
-    : m_reporter (*this, p)
+    : m_reporter (p, *this)
   { }
 
   nonintruded_child (const nonintruded_child& other)
-    : m_reporter (*this, other.m_reporter)
+    : m_reporter (other.m_reporter, *this)
   { }
 
   nonintruded_child (nonintruded_child&& other) noexcept
-    : m_reporter (*this, std::move (other.m_reporter))
+    : m_reporter (std::move (other.m_reporter), *this)
   { }
 
   nonintruded_child& operator= (const nonintruded_child& other) = default;
@@ -270,7 +270,7 @@ public:
 
 //  child create (std::string s)
 //  {
-//    return { *this, std::move (s) };
+//    return { std::move (s, *this) };
 //  }
 
   void transfer_from (nonintruded_parent_temp& other)
@@ -328,7 +328,7 @@ public:
 //  { }
 
   self_parent (self_parent&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker)),
+    : m_tracker (std::move (other.m_tracker), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -344,6 +344,11 @@ public:
   friend void bind (self_parent& l, self_parent& r)
   {
     bind (l.m_tracker, r.m_tracker);
+  }
+  
+  std::size_t num_reporters (void) const noexcept
+  {
+    return m_tracker.num_reporters ();
   }
 
   self_parent& operator= (self_parent&& other) noexcept
@@ -379,7 +384,7 @@ public:
   anon_self_parent (const anon_self_parent& other) = delete;
 
   anon_self_parent (anon_self_parent&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker))
+    : m_tracker (std::move (other.m_tracker), *this)
   { }
 
   anon_self_parent& operator= (const anon_self_parent& other) = delete;
@@ -425,7 +430,7 @@ public:
   anon1 (const anon_self_parent& other) = delete;
 
   anon1 (anon1&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker))
+    : m_tracker (std::move (other.m_tracker), *this)
   { }
 
   anon1& operator= (const anon1& other) = delete;
@@ -465,7 +470,7 @@ public:
   anon2 (const anon2& other) = delete;
 
   anon2 (anon2&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker))
+    : m_tracker (std::move (other.m_tracker), *this)
   { }
 
   anon2& operator= (const anon2& other) = delete;
@@ -517,12 +522,12 @@ public:
   { }
 
   named1 (const named1& other)
-    : m_tracker (*this, other.m_tracker),
+    : m_tracker (other.m_tracker, *this),
       m_name (other.m_name)
   { }
 
   named1 (named1&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker)),
+    : m_tracker (std::move (other.m_tracker), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -576,12 +581,12 @@ public:
   { }
 
   named2 (const named2& other)
-    : m_tracker (*this, other.m_tracker),
+    : m_tracker (other.m_tracker, *this),
       m_name (other.m_name)
   { }
 
   named2 (named2&& other) noexcept
-    : m_tracker (*this, std::move (other.m_tracker)),
+    : m_tracker (std::move (other.m_tracker), *this),
       m_name (std::move (other.m_name))
   { }
 
@@ -745,6 +750,8 @@ std::chrono::duration<double> test_multireporter (void)
   self_parent p ("p");
   self_parent q (p, "q");
   self_parent r (q, "r");
+//  bind (p, q);
+//  bind (q, r);
   bind (r, p);
   
   std::cout << "initial state" << std::endl;
@@ -754,8 +761,12 @@ std::chrono::duration<double> test_multireporter (void)
   
   std::cout << "remove p" << std::endl;
   p.~self_parent ();
+  std::cout << p << std::endl;
   std::cout << q << std::endl;
   std::cout << r << std::endl;
+  std::cout << p.num_reporters () << std::endl;
+  std::cout << q.num_reporters () << std::endl;
+  std::cout << r.num_reporters () << std::endl;
   
   time t2 = clock::now ();
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
@@ -774,8 +785,9 @@ std::chrono::duration<double> perf_multireporter (void)
   for (std::size_t i = 0; i < num_iter; ++i)
     {
       objs.emplace_back ();
+      auto& b = objs.back ();
       std::for_each (objs.begin (), --objs.end (),
-                     [&b = objs.back ()] (anon_self_parent& a)
+                     [&b] (anon_self_parent& a)
                      {
                        bind (a, b); 
                      });
@@ -815,14 +827,16 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
     {
       a1s.emplace_back ();
       a2s.emplace_back ();
+      auto& a1 = a1s.back ();
+      auto& a2 = a2s.back ();
       std::for_each (a2s.begin (), --a2s.end (),
-                     [&a1 = a1s.back ()] (anon2& a2)
+                     [&a1] (anon2& a2)
                      {
                        a1.bind (a2);
                      });
 
       std::for_each (a1s.begin (), --a1s.end (),
-                     [&a2 = a2s.back ()] (anon1& a1)
+                     [&a2] (anon1& a1)
                      {
                        a2.bind (a1);
                      });
@@ -1036,28 +1050,36 @@ std::chrono::duration<double> test_reporter (void)
 
 int main()
 {
-  std::cout << test_reporter <child, parent> ().count () << std::endl;
-  std::cout << test_reporter <nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
+  try
+    {
+      std::cout << test_reporter <child, parent> ().count () << std::endl;
+      std::cout << test_reporter <nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
 
-  std::cout << perf_create<child, parent> ().count () << std::endl;
-  std::cout << perf_create<nonintruded_child, nonintruded_parent> ().count () << std::endl;
+      std::cout << perf_create<child, parent> ().count () << std::endl;
+      std::cout << perf_create<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
-  std::cout << perf_access<child, parent> ().count () << std::endl;
-  std::cout << perf_access<nonintruded_child, nonintruded_parent> ().count () << std::endl;
-  
-  plf::list<int> x = { 1, 2, 3, 4 };
-  plf::list<int>::iterator last = --x.end ();
-  std::reverse_iterator<plf::list<int>::iterator> rb (x.end ());
-  std::cout << (*last == *rb) << std::endl;
-  
-  test_multireporter ();
+      std::cout << perf_access<child, parent> ().count () << std::endl;
+      std::cout << perf_access<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
-  std::cout << perf_multireporter ().count () << std::endl;
-  std::cout << perf_disparate_multireporter ().count () << std::endl;
-  
-  test_disparate_multireporter ();
-  test_binding ();
+      plf::list<int> x = { 1, 2, 3, 4 };
+      plf::list<int>::iterator last = --x.end ();
+      std::reverse_iterator<plf::list<int>::iterator> rb (x.end ());
+      std::cout << (*last == *rb) << std::endl;
 
+      test_multireporter ();
+
+      std::cout << perf_multireporter ().count () << std::endl;
+      std::cout << perf_disparate_multireporter ().count () << std::endl;
+
+      test_disparate_multireporter ();
+      test_binding ();
+    }
+    catch (std::exception& e)
+      {
+        std::cout << e.what () << std::endl;
+        return 1;
+      }
+      
   return 0;
 
 }
