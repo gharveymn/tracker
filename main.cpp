@@ -11,6 +11,8 @@
 
 using namespace octave;
 
+constexpr std::size_t multiplier = 1; 
+
 class parent;
 class child;
 
@@ -699,7 +701,7 @@ std::chrono::duration<double> perf_create (void)
 
   Parent p, q;
   std::list<Child> children;
-  constexpr std::size_t iter_max = 100000;
+  constexpr std::size_t iter_max = 1000 * multiplier;
 
   for (std::size_t i = 0; i < iter_max; ++i)
     {
@@ -748,7 +750,7 @@ std::chrono::duration<double> perf_access (void)
 
   Parent p;
   std::vector<Child> children;
-  constexpr std::size_t iter_max = 100000;
+  constexpr std::size_t iter_max = 1000 * multiplier;
 
   for (std::size_t i = 0; i < iter_max; ++i)
     {
@@ -814,7 +816,7 @@ std::chrono::duration<double> perf_multireporter (void)
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
-  constexpr std::size_t num_iter = 10000;
+  constexpr std::size_t num_iter = 100 * multiplier;
   
   std::vector<anon_self_parent> objs;
   objs.reserve (num_iter);
@@ -857,7 +859,7 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
-  constexpr std::size_t num_iter = 10000;
+  constexpr std::size_t num_iter = 100 * multiplier;
 
   std::vector<anon1> a1s;
   std::vector<anon2> a2s;

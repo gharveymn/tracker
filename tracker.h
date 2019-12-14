@@ -27,44 +27,10 @@ along with Octave; see the file COPYING.  If not, see
 #include "octave-config.h"
 #include <plf_list.h>
 #include <iterator>
+#include <optional>
 
 namespace octave
 {
-  
-  // Idea:
-  //   Label the local object of type `reporter` or `tracker` as `local`
-  //   and the object which tracks that `remote` (which may also be either
-  //   type `reporter` or `tracker`).
-  //
-  //   Trackers essentially lists of reporters and are themselves agnostic 
-  //   to the type of `remote`. This is not the case for the constituent 
-  //   reporters.
-  //
-  //   `reporter`s may point to two types: other `reporter`s, and `tracker`s
-  //   if pointing to a `tracker` then a self-iterator is held
-  //      the self-iterator iterates over elements of `reporter`->`reporter`
-  //   otherwise, no self-iterator is held
-  //
-  //   reporters may or may not hold a pointer to their parent
-  //
-  //   reporter layer 1 members:
-  //     pointer to base of tracker (which may be tracker or reporter)
-  //     self-iterator if tracker is of type tracker
-  //   reporter layer 2 members:
-  //     none
-  //
-  //   reporter layer 1 methods:
-  //     basic reporting mechanisms
-  //   reporter layer 2 methods:
-  //     downcast tracker from layer 1 to resolved type
-  //     pointer to parent
-  //
-  
-  struct intrusive_tag
-  { };
-
-  struct nonintrusive_tag
-  { };
 
   // LocalSuperior may be either intrusive_reporter or tracker_base
   // Likewise for RemoteSuperior
@@ -88,11 +54,6 @@ namespace octave
   
   template <typename LocalParent, typename RemoteParent, typename Dummy>
   class multireporter;
-
-//  // RemoteTag is either `intrusive_tag` or `nonintrusive_tag`
-//  template <typename LocalParent, typename RemoteParent, 
-//            typename RemoteTag = nonintrusive_tag>
-//  class tracker_1;
 
   template <typename Derived, typename RemoteParent,
     typename Remote = tracker<RemoteParent, Derived, intrusive_reporter>>
@@ -193,31 +154,6 @@ namespace octave
     using abs_base_type = typename reporter_traits<intrusive_type>::base_type;
     using superior_type = abs_base_type;
   };
-
-//  template <typename LocalParent, typename RemoteParent>
-//  struct reporter_traits<tracker_1<LocalParent, RemoteParent, intrusive_tag>>
-//  {
-//    using type = tracker_1<LocalParent, RemoteParent, intrusive_tag>;
-//    using base_type = tracker<LocalParent, RemoteParent, RemoteParent>;
-//    using intrusive_type
-//      = typename reporter_traits<base_type>::intrusive_type;
-//    using abs_base_type
-//      = typename reporter_traits<base_type>::abs_base_type;
-//    using superior_type = abs_base_type;
-//  };
-//
-//  template <typename LocalParent, typename RemoteParent>
-//  struct reporter_traits<tracker_1<LocalParent, RemoteParent, nonintrusive_tag>>
-//  {
-//    using type = tracker_1<LocalParent, RemoteParent, nonintrusive_tag>;
-//    using base_type = tracker<LocalParent, RemoteParent,
-//                              reporter<RemoteParent, LocalParent, type>>;
-//    using intrusive_type
-//      = typename reporter_traits<base_type>::intrusive_type;
-//    using abs_base_type
-//      = typename reporter_traits<base_type>::abs_base_type;
-//    using superior_type = abs_base_type;
-//  };
   
   template <typename LocalParent, typename RemoteParent, typename Dummy>
   struct reporter_traits<multireporter<LocalParent, RemoteParent, Dummy>>
@@ -370,19 +306,19 @@ namespace octave
     reporter_base& operator= (reporter_base&& other) noexcept = delete;
     ~reporter_base           (void)                           = default;
 
-    explicit constexpr reporter_base (remote_type *ptr) noexcept
-      : m_remote (ptr)
+    explicit constexpr reporter_base (remote_type& ptr) noexcept
+      : m_remote1 (&ptr)
     { }
     
     void orphan_remote (void) noexcept 
     {
       if (has_remote ())
-        m_remote->orphan ();
+        get_remote ()->orphan ();
     }
 
     constexpr bool has_remote (void) const noexcept
     {
-      return m_remote != nullptr;
+      return m_remote1.has_value ();
     }
     
     constexpr bool is_tracked (void) const noexcept 
@@ -392,7 +328,7 @@ namespace octave
 
     constexpr remote_type * get_remote (void) const noexcept
     {
-      return m_remote;
+      return *m_remote1;
     }
     
     constexpr remote_reporter_type * get_remote_reporter (void) const noexcept
@@ -400,14 +336,14 @@ namespace octave
       return get_remote ();
     }
 
-    void reset_remote (remote_type *ptr) noexcept
+    void set_remote (remote_type& ptr) noexcept
     {
-      m_remote = ptr;
+      m_remote1 = &ptr;
     }
 
   private:
 
-    remote_type *m_remote = nullptr;
+    std::optional<remote_type *> m_remote1;
 
   };
 
@@ -443,31 +379,27 @@ namespace octave
 
     explicit reporter_base (remote_type& remote)
       : m_remote (&remote),
-        m_self_iter (m_remote->track (downcast (this))),
-        m_is_tracked (true)
+        m_self_iter (remote.track (*downcast (this)))
     { }
 
     explicit reporter_base (remote_type& remote, self_iter it)
       : m_remote (&remote),
-        m_self_iter (it),
-        m_is_tracked (true)
+        m_self_iter (it)
     { }
 
     reporter_base (const reporter_base& other)
       : m_remote (other.m_remote),
         m_self_iter (other.has_remote () 
-                       ? other.m_remote->track (downcast (this))
-                       : self_iter { }),
-        m_is_tracked (true)
+                       ? other.get_remote ()->track (*downcast (this))
+                       : self_iter { })
     { }
 
     reporter_base (reporter_base&& other) noexcept
-      : m_remote     (other.m_remote),
-        m_self_iter  (other.m_self_iter),
-        m_is_tracked (other.m_is_tracked)
+      : m_remote    (other.m_remote),
+        m_self_iter (other.m_self_iter)
     {
-      other.m_remote = nullptr;
-      other.m_is_tracked = false;
+      other.m_remote.reset ();
+      other.m_self_iter.reset ();
     }
 
     reporter_base& operator= (const reporter_base& other)
@@ -475,13 +407,13 @@ namespace octave
       if (&other != this)
         {
           if (other.has_remote ())
-            rebind (*other.m_remote);
+            rebind (*other.get_remote ());
           else
             {
-              if (this->is_tracked ())
-                m_remote->orphan (m_self_iter);
-              m_remote     = nullptr;
-              m_is_tracked = false;
+              if (is_tracked ())
+                get_remote ()->orphan (*m_self_iter);
+              m_remote.reset ();
+              m_self_iter.reset ();
             }
         }
       return *this;
@@ -491,25 +423,24 @@ namespace octave
     {
       if (&other != this)
         {
-          if (this->is_tracked ())
-            m_remote->orphan (m_self_iter);
+          if (is_tracked ())
+            get_remote ()->orphan (*m_self_iter);
 
-          m_remote     = other.m_remote;
-          m_self_iter  = other.m_self_iter;
-          m_is_tracked = other.m_is_tracked;
+          m_remote    = other.m_remote;
+          m_self_iter = other.m_self_iter;
           
-          other.m_remote     = nullptr;
-          other.m_is_tracked = false;
+          other.m_remote.reset ();
+          other.m_self_iter.reset ();
         }
       return *this;
     }
 
     void orphan_remote (void) noexcept
     {
-      if (m_is_tracked)
+      if (is_tracked ())
         {
-          m_remote->orphan (m_self_iter);
-          m_is_tracked = false; 
+          get_remote ()->orphan (*m_self_iter);
+          m_self_iter.reset ();
         }
     }
     
@@ -517,7 +448,7 @@ namespace octave
     {
       if (! is_tracked ())
         return 0;
-      return m_remote->get_offset (m_self_iter);
+      return get_remote ()->get_offset (*m_self_iter);
     }
 
     reporter_base& rebind (remote_type& new_remote)
@@ -527,20 +458,18 @@ namespace octave
       if (&new_remote != m_remote)
         {
           // might fail
-          self_iter new_iter = new_remote.track (downcast (this));
+          self_iter new_iter = new_remote.track (*downcast (this));
 
           // if we didn't fail the rest is noexcept
           if (is_tracked ())
-            m_remote->orphan (m_self_iter);
-          
-          m_remote     = &new_remote;
-          m_self_iter  = new_iter;
-          m_is_tracked = true;
+            get_remote ()->orphan (*m_self_iter);
+
+          m_remote    = &new_remote;
+          m_self_iter = new_iter;
         }
-      else if (! this->is_tracked ())
+      else if (! is_tracked ())
         {
-          m_self_iter  = m_remote->track (downcast (this));
-          m_is_tracked = true;
+          m_self_iter = new_remote.track (*downcast (this));
         }
       return *this;
     }
@@ -549,50 +478,52 @@ namespace octave
     void swap (reporter_base& other) noexcept
     {
       using std::swap;
-      swap (m_remote, other.m_remote_ptr);
+      swap (m_remote, other.m_remote);
       swap (m_self_iter, other.m_self_iter);
-      swap (m_is_tracked, other.m_self_iter);
     }
 
     constexpr bool has_remote (void) const noexcept
     {
-      return m_remote != nullptr;
+      return m_remote.has_value ();
     }
 
     constexpr bool is_tracked (void) const noexcept
     {
-      return m_is_tracked;
+      return m_self_iter.has_value ();
     }
 
     constexpr remote_type * get_remote (void) const noexcept
     {
-      return m_remote;
+      return *m_remote;
     }
 
     constexpr remote_reporter_type * get_remote_reporter (void) const noexcept
     {
-      return m_self_iter.operator-> ();
+      return (*m_self_iter).operator-> ();
     }
     
     void orphan (void) noexcept
     {
-      m_is_tracked = false;
+      m_self_iter.reset ();
     }
 
-    void reset_remote (remote_type *ptr) noexcept
+    void set_remote (remote_type& remote) noexcept
     {
-      m_remote = ptr;
+      m_remote = &remote;
     }
 
 //  protected:
 
-    void reset (remote_type *ptr = nullptr,
-                self_iter it = self_iter { },
-                bool is_tracked = false) noexcept
+    void set (remote_type& remote, self_iter it) noexcept
     {
-      m_remote = ptr;
-      m_self_iter   = it;
-      m_is_tracked = is_tracked;
+      m_remote    = &remote;
+      m_self_iter = it;
+    }
+    
+    void reset (void) noexcept 
+    {
+      m_remote.reset ();
+      m_self_iter.reset ();
     }
 
   private:
@@ -608,10 +539,10 @@ namespace octave
     {
       return static_cast<LocalSuperior *> (ptr);
     }
-
-    remote_type *m_remote     = nullptr;
-    self_iter    m_self_iter;
-    bool         m_is_tracked = false;
+    
+//    std::optional<std::pair<remote_type *, std::optional<self_iter>>> m_data;
+    std::optional<remote_type *> m_remote;
+    std::optional<self_iter>     m_self_iter;
 
   };
 
@@ -641,7 +572,7 @@ namespace octave
       : base_type (std::move (other))
     {
       if (this->is_tracked ())
-        this->get_remote_reporter ()->reset_remote (this);
+        this->get_remote_reporter ()->set_remote (*this);
     }
 
     intrusive_reporter& operator= (intrusive_reporter&& other) noexcept
@@ -650,7 +581,7 @@ namespace octave
         {
           base_type::operator= (std::move (other));
           if (this->is_tracked ())
-            this->get_remote_reporter ()->reset_remote (this);
+            this->get_remote_reporter ()->set_remote (*this);
         }
       return *this;
     }
@@ -673,10 +604,10 @@ namespace octave
           base_type::swap (other);
           
           if (this->is_tracked ())
-            this->get_remote_reporter ()->reset_remote (this);
+            this->get_remote_reporter ()->set_remote (*this);
 
           if (other.is_tracked ())
-            other.get_remote_reporter ()->reset_remote (&other);
+            other.get_remote_reporter ()->set_remote (other);
         }
     }
 
@@ -853,9 +784,9 @@ namespace octave
       // kinda expensive
       m_reporters.swap (other.m_reporters);
       for (internal_ref c_ptr : m_reporters)
-        c_ptr.reset_remote (this);
+        c_ptr.set_remote (*this);
       for (internal_ref c_ptr : other.m_reporters)
-        c_ptr.reset_remote (&other);
+        c_ptr.set_remote (other);
     }
 
     std::size_t num_reporters (void) const noexcept
@@ -867,7 +798,7 @@ namespace octave
                                  internal_citer pos) noexcept
     {
       for (internal_ref rptr : src.m_reporters)
-        rptr.get_remote_reporter ()->reset_remote (this);
+        rptr.get_remote_reporter ()->set_remote (*this);
       return m_reporters.splice (pos, src.m_reporters);
     }
 
@@ -1294,7 +1225,7 @@ namespace octave
       internal_iter it = this->track ();
       try
         {
-          it->reset (&remote, remote.track (*this, it), true);
+          it->set (remote, remote.track (*this, it));
         }
       catch (...)
         {
