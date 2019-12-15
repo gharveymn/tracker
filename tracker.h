@@ -342,9 +342,10 @@ namespace octave
       return get_remote ();
     }
 
-    void set_remote (remote_type& ptr) noexcept
+    template <typename Remote>
+    void set_remote (Remote& remote) noexcept
     {
-      m_remote = &ptr;
+      m_remote = &static_cast<remote_type&> (remote);
     }
 
   private:
@@ -390,12 +391,12 @@ namespace octave
     explicit reporter_base (remote_type& remote, self_iter it)
       : m_data ({ &remote, it })
     { }
-           
+
     reporter_base (const reporter_base& other)
       : m_data (other.has_remote ()
-          ? decltype (m_data) ({ &other.get_remote (), 
-                                 other.get_remote ().track (*this) })
-          : std::nullopt)
+                ? decltype (m_data) ({ &other.get_remote (),
+                                       other.get_remote ().track (*this) })
+                : std::nullopt)
     { }
 
     reporter_base (reporter_base&& other) noexcept
@@ -516,7 +517,7 @@ namespace octave
 
     void set (remote_type& remote, self_iter it) noexcept
     {
-      m_data.emplace (std::make_pair (&remote, it ));
+      m_data = { &remote, it };
     }
     
     void reset (void) noexcept 

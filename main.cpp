@@ -308,8 +308,10 @@ private:
   std::string m_name;
 };
 
+
 template class octave::tracker<nonintruded_parent, nonintruded_child, reporter>;
 template class octave::tracker<nonintruded_parent_s, nonintruded_child_s, reporter>;
+template class octave::tracker<nonintruded_parent, child>;
 
 void nonintruded_child_s::rebind (nonintruded_parent_s& p)
 {
