@@ -11,16 +11,18 @@
 
 using namespace octave;
 
-constexpr std::size_t multiplier = 1; 
+constexpr std::size_t multiplier = 1;
 
 class parent;
 class child;
 
-class child : public intrusive_reporter<child, parent, tracker<parent, child>>
+template class octave::intrusive_reporter<child, parent>;
+
+class child : public intrusive_reporter<child, parent>
 {
 public:
 
-  using base_type = intrusive_reporter<child, parent, tracker<parent, child>>;
+  using base_type = intrusive_reporter<child, parent>;
 
   child (void) = default;
 
@@ -130,6 +132,8 @@ private:
   std::string m_name;
 };
 
+template class octave::tracker<parent, child>;
+
 void child::rebind (parent& p)
 {
   base_type::rebind (p.m_children);
@@ -204,6 +208,8 @@ private:
   std::string m_name;
 };
 
+template class octave::reporter<nonintruded_child_s, nonintruded_parent_s>;
+
 class nonintruded_child
 {
 public:
@@ -249,13 +255,12 @@ private:
   reporter_type m_reporter;
 };
 
+template class octave::reporter<nonintruded_child, nonintruded_parent>;
+
 template <typename T>
 class nonintruded_parent_temp
 {
 public:
-
-  // works, for some reason, figure out why
-  // using tracker_type = tracker_base<reporter<nonintruded_child, nonintruded_parent>, nonintruded_parent>;
 
   using reporter_type = typename T::reporter_type;
   using tracker_type  = typename reporter_type::remote_type;
@@ -302,6 +307,9 @@ private:
   tracker_type m_children;
   std::string m_name;
 };
+
+template class octave::tracker<nonintruded_parent, nonintruded_child, reporter>;
+template class octave::tracker<nonintruded_parent_s, nonintruded_child_s, reporter>;
 
 void nonintruded_child_s::rebind (nonintruded_parent_s& p)
 {
@@ -382,6 +390,8 @@ private:
   
 };
 
+template class octave::multireporter<self_parent>;
+
 class anon_self_parent
 {
 public:
@@ -425,6 +435,8 @@ private:
 
 };
 
+template class octave::multireporter<anon_self_parent>;
+
 class anon1;
 class anon2;
 
@@ -467,6 +479,8 @@ private:
   multireporter<anon1, anon2> m_tracker;
 
 };
+
+template class octave::multireporter<anon1, anon2>;
 
 class anon2
 {
@@ -512,6 +526,8 @@ private:
   multireporter<anon2, anon1> m_tracker;
 
 };
+
+template class octave::multireporter<anon2, anon1>;
 
 void anon1::bind (anon2& r)
 {
@@ -587,6 +603,8 @@ private:
 
 };
 
+template class octave::multireporter<named1, named2>;
+
 class named2
 {
 public:
@@ -652,6 +670,8 @@ private:
   std::string m_name;
 
 };
+
+template class octave::multireporter<named2, named1>;
 
 inline void 
 bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
@@ -943,41 +963,30 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   // copy constructor
   std::unique_ptr<named1> ptr (new named1 (*n1_3));
 
-  std::cout << "copy ctor: " << *ptr << std::endl;
+  std::cout << "copy ctor (ptr): " << *ptr << std::endl;
   print_all ();
   
   // move constructor
   std::unique_ptr<named1> (new named1 (std::move (*n1_2))).swap (ptr);
 
-  std::cout << "move ctor: " << *ptr << std::endl;
+  std::cout << "move ctor (ptr): " << *ptr << std::endl;
   print_all ();
   
   // copy assignment operator
   *ptr = *n1_3;
 
-  std::cout << "copy assign: " << *ptr << std::endl;
+  std::cout << "copy assign (ptr): " << *ptr << std::endl;
   print_all ();
 
   // move assignment operator
   *ptr = std::move (*n1_1);
 
-  std::cout << "move assign: " << *ptr << std::endl;
+  std::cout << "move assign (ptr): " << *ptr << std::endl;
   print_all ();
 
-  std::cout << "remove n1_1" << std::endl;
-  n1_1.reset ();
-  std::cout.width (w);
-  std::cout << std::cout.fill ()  << " | ";
-  std::cout.width (w);
-  std::cout << n1_2->print () << " | ";
-  std::cout.width (w);
-  std::cout << n1_3->print () << std::endl;
-  std::cout.width (w);
-  std::cout << n2_1->print () << " | ";
-  std::cout.width (w);
-  std::cout << n2_2->print () << " | ";
-  std::cout.width (w);
-  std::cout << n2_3->print () << std::endl << std::endl;
+  std::cout << "remove ptr" << std::endl;
+  ptr.reset ();
+  print_all ();
 
   time t2 = clock::now ();
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
