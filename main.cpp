@@ -9,20 +9,18 @@
 
 #include "tracker.h"
 
-using namespace octave;
+using namespace track;
 
 constexpr std::size_t multiplier = 1;
 
 class parent;
 class child;
 
-template class octave::intrusive_reporter<child, parent>;
-
 class child : public intrusive_reporter<child, parent>
 {
 public:
 
-  using base_type = intrusive_reporter<child, parent>;
+  using base = track::intrusive_reporter<child, parent>;
 
   child (void) = default;
 
@@ -30,11 +28,11 @@ public:
     : m_name (std::move (s))
   { }
 
-  child (tracker<parent, child>& tkr)
+  child (typename base::remote_type& tkr)
     : intrusive_reporter (tkr)
   { }
 
-  child (tracker<parent, child>& tkr, std::string s)
+  child (typename base::remote_type& tkr, std::string s)
     : intrusive_reporter (tkr),
       m_name (std::move (s))
   { }
@@ -87,7 +85,7 @@ class parent
 public:
 
   using reporter_type = child;
-  using tracker_type  = tracker<parent, child>;
+  using tracker_type  = tracker<parent, child, intrusive_reporter_tag>;
 
   parent (void)
     : m_children (*this)
@@ -128,15 +126,13 @@ public:
   tracker_type::iter end (void)   noexcept { return m_children.end (); }
 
 private:
-  tracker<parent, child> m_children;
+  tracker_type m_children;
   std::string m_name;
 };
 
-template class octave::tracker<parent, child>;
-
 void child::rebind (parent& p)
 {
-  base_type::rebind (p.m_children);
+  base::rebind (p.m_children);
 }
 
 class nonintruded_child_s;
@@ -208,8 +204,6 @@ private:
   std::string m_name;
 };
 
-template class octave::reporter<nonintruded_child_s, nonintruded_parent_s>;
-
 class nonintruded_child
 {
 public:
@@ -254,8 +248,6 @@ public:
 private:
   reporter_type m_reporter;
 };
-
-template class octave::reporter<nonintruded_child, nonintruded_parent>;
 
 template <typename T>
 class nonintruded_parent_temp
@@ -307,11 +299,6 @@ private:
   tracker_type m_children;
   std::string m_name;
 };
-
-
-template class octave::tracker<nonintruded_parent, nonintruded_child, reporter>;
-template class octave::tracker<nonintruded_parent_s, nonintruded_child_s, reporter>;
-template class octave::tracker<nonintruded_parent, child>;
 
 void nonintruded_child_s::rebind (nonintruded_parent_s& p)
 {
@@ -392,8 +379,6 @@ private:
   
 };
 
-template class octave::multireporter<self_parent>;
-
 class anon_self_parent
 {
 public:
@@ -437,8 +422,6 @@ private:
 
 };
 
-template class octave::multireporter<anon_self_parent>;
-
 class anon1;
 class anon2;
 
@@ -481,8 +464,6 @@ private:
   multireporter<anon1, anon2> m_tracker;
 
 };
-
-template class octave::multireporter<anon1, anon2>;
 
 class anon2
 {
@@ -528,8 +509,6 @@ private:
   multireporter<anon2, anon1> m_tracker;
 
 };
-
-template class octave::multireporter<anon2, anon1>;
 
 void anon1::bind (anon2& r)
 {
@@ -605,8 +584,6 @@ private:
 
 };
 
-template class octave::multireporter<named1, named2>;
-
 class named2
 {
 public:
@@ -672,8 +649,6 @@ private:
   std::string m_name;
 
 };
-
-template class octave::multireporter<named2, named1>;
 
 inline void 
 bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
