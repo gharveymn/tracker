@@ -1244,8 +1244,8 @@ namespace octave
 
     citer overwrite_reporters (const multireporter& other)
     {
-      return this->untrack (this->internal_begin (), 
-                            internal_copy_reporters (other));
+      internal_citer pivot = internal_copy_reporters (other);
+      return this->untrack (this->internal_begin (), pivot);
     }
 
     void orphan (citer it)

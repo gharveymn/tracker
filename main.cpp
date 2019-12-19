@@ -11,6 +11,8 @@
 
 using namespace octave;
 
+constexpr std::size_t multiplier = 100;
+
 class parent;
 class child;
 
@@ -18,7 +20,7 @@ class child : public intrusive_reporter<child, parent>
 {
 public:
 
-  using base_type = intrusive_reporter<child, parent>;
+  using base = intrusive_reporter<child, parent>;
 
   child (void) = default;
 
@@ -26,11 +28,11 @@ public:
     : m_name (std::move (s))
   { }
 
-  child (tracker<child, parent>& tkr)
+  child (typename base::remote_type& tkr)
     : intrusive_reporter (tkr)
   { }
 
-  child (tracker<child, parent>& tkr, std::string s)
+  child (typename base::remote_type& tkr, std::string s)
     : intrusive_reporter (tkr),
       m_name (std::move (s))
   { }
@@ -130,7 +132,7 @@ private:
 
 void child::rebind (parent& p)
 {
-  base_type::rebind (p.m_children);
+  base::rebind (p.m_children);
 }
 
 class nonintruded_child_s;
@@ -251,9 +253,6 @@ template <typename T>
 class nonintruded_parent_temp
 {
 public:
-
-  // works, for some reason, figure out why
-  // using tracker_type = tracker_base<reporter<nonintruded_child, nonintruded_parent>, nonintruded_parent>;
 
   using reporter_type = typename T::reporter_type;
   using tracker_type  = typename reporter_type::remote_type;
@@ -699,7 +698,7 @@ std::chrono::duration<double> perf_create (void)
 
   Parent p, q;
   std::list<Child> children;
-  constexpr std::size_t iter_max = 100000;
+  constexpr std::size_t iter_max = 1000 * multiplier;
 
   for (std::size_t i = 0; i < iter_max; ++i)
     {
@@ -748,7 +747,7 @@ std::chrono::duration<double> perf_access (void)
 
   Parent p;
   std::vector<Child> children;
-  constexpr std::size_t iter_max = 100000;
+  constexpr std::size_t iter_max = 1000 * multiplier;
 
   for (std::size_t i = 0; i < iter_max; ++i)
     {
@@ -814,7 +813,7 @@ std::chrono::duration<double> perf_multireporter (void)
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
-  constexpr std::size_t num_iter = 10000;
+  constexpr std::size_t num_iter = 100 * multiplier;
   
   std::vector<anon_self_parent> objs;
   objs.reserve (num_iter);
@@ -857,7 +856,7 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
-  constexpr std::size_t num_iter = 10000;
+  constexpr std::size_t num_iter = 100 * multiplier;
 
   std::vector<anon1> a1s;
   std::vector<anon2> a2s;
@@ -941,41 +940,38 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   // copy constructor
   std::unique_ptr<named1> ptr (new named1 (*n1_3));
 
-  std::cout << "copy ctor: " << *ptr << std::endl;
+  std::cout << "copy ctor (ptr): " << *ptr << std::endl;
   print_all ();
   
   // move constructor
   std::unique_ptr<named1> (new named1 (std::move (*n1_2))).swap (ptr);
 
-  std::cout << "move ctor: " << *ptr << std::endl;
+  std::cout << "move ctor (ptr): " << *ptr << std::endl;
   print_all ();
   
   // copy assignment operator
   *ptr = *n1_3;
 
-  std::cout << "copy assign: " << *ptr << std::endl;
+  std::cout << "copy assign (ptr): " << *ptr << std::endl;
   print_all ();
-
+  
+//  std::cout << ptr.get () << std::endl;
+//  std::cout << n1_1.get () << std::endl;
+//  std::cout << n1_2.get () << std::endl;
+//  std::cout << n1_3.get () << std::endl;
+//  std::cout << n2_1.get () << std::endl;
+//  std::cout << n2_2.get () << std::endl;
+//  std::cout << n2_3.get () << std::endl << std::endl;
+  
   // move assignment operator
   *ptr = std::move (*n1_1);
 
-  std::cout << "move assign: " << *ptr << std::endl;
+  std::cout << "move assign (ptr): " << *ptr << std::endl;
   print_all ();
 
-  std::cout << "remove n1_1" << std::endl;
-  n1_1.reset ();
-  std::cout.width (w);
-  std::cout << std::cout.fill ()  << " | ";
-  std::cout.width (w);
-  std::cout << n1_2->print () << " | ";
-  std::cout.width (w);
-  std::cout << n1_3->print () << std::endl;
-  std::cout.width (w);
-  std::cout << n2_1->print () << " | ";
-  std::cout.width (w);
-  std::cout << n2_2->print () << " | ";
-  std::cout.width (w);
-  std::cout << n2_3->print () << std::endl << std::endl;
+  std::cout << "remove ptr" << std::endl;
+  ptr.reset ();
+  print_all ();
 
   time t2 = clock::now ();
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
