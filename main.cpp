@@ -121,6 +121,11 @@ public:
       o << c << " ";
     return o << "}";
   }
+  
+  std::size_t num_children (void) noexcept 
+  {
+    return m_children.num_reporters ();
+  }
 
   tracker_type::iter begin (void) noexcept { return m_children.begin (); }
   tracker_type::iter end (void)   noexcept { return m_children.end (); }
@@ -290,6 +295,11 @@ public:
     for (const T& c : p.m_children)
       o << c << " ";
     return o << "}";
+  }
+
+  std::size_t num_children (void) noexcept
+  {
+    return m_children.num_reporters ();
   }
 
   typename tracker_type::iter begin (void) noexcept { return m_children.begin (); }
@@ -704,9 +714,22 @@ std::chrono::duration<double> perf_create (void)
     {
       children.emplace_back (p.create ());
     }
+    
+  auto print_num_children = [] (Parent& parent) 
+    { std::cout << parent.num_children () << std::endl;};
+
+  print_num_children (p);
+  print_num_children (q);
+  
+  std::cout << std::endl;
 
   q.transfer_from (p);
   p.transfer_from (q);
+
+  print_num_children (p);
+  print_num_children (q);
+
+  std::cout << std::endl;
 
   std::random_device rd;
   std::mt19937 gen (rd());
@@ -725,8 +748,16 @@ std::chrono::duration<double> perf_create (void)
       }
     }
 
+  print_num_children (p);
+  print_num_children (q);
+  std::cout << std::endl;
+
   q.transfer_from (p);
   p.transfer_from (q);
+
+  print_num_children (p);
+  print_num_children (q);
+  std::cout << std::endl;
 
   children.clear ();
 
