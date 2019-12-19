@@ -4,8 +4,7 @@ PROJECT(tracker)
 SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_EXTENSIONS OFF)
 
-INCLUDE_DIRECTORIES(../plf_list)
-INCLUDE_DIRECTORIES(../octave-ir)
+INCLUDE_DIRECTORIES(external/plf_list)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")
 
@@ -23,4 +22,4 @@ if (UNIX)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
 endif()
 
-ADD_EXECUTABLE(tracker main.cpp tracker.h set_tracker.h)
+ADD_EXECUTABLE(tracker main.cpp tracker.h)
