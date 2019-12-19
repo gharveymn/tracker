@@ -954,7 +954,15 @@ std::chrono::duration<double> test_disparate_multireporter (void)
 
   std::cout << "copy assign (ptr): " << *ptr << std::endl;
   print_all ();
-
+  
+//  std::cout << ptr.get () << std::endl;
+//  std::cout << n1_1.get () << std::endl;
+//  std::cout << n1_2.get () << std::endl;
+//  std::cout << n1_3.get () << std::endl;
+//  std::cout << n2_1.get () << std::endl;
+//  std::cout << n2_2.get () << std::endl;
+//  std::cout << n2_3.get () << std::endl << std::endl;
+  
   // move assignment operator
   *ptr = std::move (*n1_1);
 

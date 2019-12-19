@@ -11,7 +11,6 @@
 #if ! defined (tracker_h)
 #define tracker_h 1
 
-#include "octave-config.h"
 #include <plf_list.h>
 #include <iterator>
 #include <optional>
@@ -23,18 +22,19 @@ namespace track
   {
 
     template <typename LocalDerived, typename RemoteDerived,
-      typename LocalTag, typename RemoteTag>
+              typename LocalBaseTag, typename RemoteBaseTag>
     class reporter_base;
-    
-    template <typename LocalDerived, typename RemoteDerived, typename RemoteTag>
-    class tracker_base;
 
-    template <typename LocalDerived, typename RemoteDerived,
-      typename RemoteTag, typename LocalParent, typename LocalTag>
-    class intrusive_reporter;
+    template <typename LocalDerived, typename RemoteDerived, 
+              typename LocalBaseTag, typename RemoteBaseTag>
+    class tracker_base;
   
+    template <typename LocalDerived, typename RemoteDerived, 
+              typename RemoteTag, typename LocalTag>
+    class intrusive_reporter;
+    
     template <typename LocalDerived, typename RemoteDerived,
-              typename RemoteTag, typename LocalParent, typename LocalTag>
+              typename RemoteTag, typename LocalTag>
     class intrusive_tracker;
   
     template <typename LocalParent, typename RemoteDerived,
@@ -47,11 +47,15 @@ namespace track
     
     struct reporter_base_tag
     {
+      template <typename ...Ts>
+      using type = reporter_base<Ts...>;
       using base = reporter_base_tag;
     };
   
     struct tracker_base_tag
     {
+      template <typename ...Ts>
+      using type = tracker_base<Ts...>;
       using base = tracker_base_tag;
     };
   
@@ -85,16 +89,19 @@ namespace track
   
     template <typename Tag>
     using tag_base_t = typename Tag::base;
-
-    template <typename LocalDerived, typename RemoteDerived,
-      typename RemoteTag, typename LocalParent = LocalDerived, 
-      typename LocalTag = intrusive_reporter_tag>
+  
+    template <typename LocalDerived, typename RemoteDerived, 
+              typename RemoteTag = tracker_tag,
+              typename LocalTag = intrusive_reporter_tag>
     class intrusive_reporter;
-
-    template <typename LocalDerived, typename RemoteDerived,
-      typename RemoteTag, typename LocalParent = LocalDerived, 
-      typename LocalTag = intrusive_tracker_tag>
+  
+    template <typename LocalDerived, typename RemoteDerived, 
+              typename RemoteTag = reporter_tag,
+              typename LocalTag = intrusive_tracker_tag>
     class intrusive_tracker;
+
+    template <typename ...Ts>
+    using list = plf::list<Ts...>;
     
     // support types
     
@@ -129,7 +136,7 @@ namespace track
   //    using const_reference   = const remote_type&;
   
       template <typename Iter>
-      reporter_iterator (Iter it)
+      constexpr reporter_iterator (Iter it)
         : m_citer (reporter_citer (it))
       { }
   
@@ -156,6 +163,11 @@ namespace track
           m_citer = std::move (other.m_citer);
         return *this;
       }
+      
+      explicit operator reporter_citer (void)
+      {
+        return m_citer;
+      }
 
 //      constexpr auto& operator* (void) noexcept
 //      {
@@ -164,7 +176,7 @@ namespace track
   
       constexpr remote_parent_type& operator* (void) const noexcept
       {
-        return get_remote_parent ();
+        return get_remote_parent();
       }
   
       constexpr remote_parent_type * operator-> (void) const noexcept
@@ -231,7 +243,8 @@ namespace track
       
     };
   
-    template <typename LocalDerived, typename RemoteDerived, typename LocalBaseTag>
+    template <typename LocalDerived, typename RemoteDerived, 
+              typename LocalBaseTag>
     class reporter_base<LocalDerived, RemoteDerived,
                          LocalBaseTag, reporter_base_tag>
     {
@@ -244,6 +257,10 @@ namespace track
   
       using remote_base_type = reporter_base<remote_type, local_type,
                                              remote_tag_type, local_tag_type>;
+
+      using remote_reporter_type = reporter_base<remote_type, local_type,
+                                                 remote_tag_type, 
+                                                 local_tag_type>;
       
       reporter_base            (void)                           = default;
       reporter_base            (const reporter_base&)           = delete;
@@ -252,8 +269,8 @@ namespace track
       reporter_base& operator= (reporter_base&& other) noexcept = delete;
       ~reporter_base           (void)                           = default;
   
-      explicit constexpr reporter_base (remote_type& ptr) noexcept
-        : m_remote (&ptr)
+      explicit constexpr reporter_base (remote_base_type& remote) noexcept
+        : m_remote (&remote)
       { }
       
       void orphan_remote (void) noexcept 
@@ -274,7 +291,7 @@ namespace track
   
       constexpr remote_type& get_remote (void) const noexcept
       {
-        return **m_remote;
+        return static_cast<remote_type&> (**m_remote);
       }
       
       constexpr remote_type& get_remote_reporter (void) const noexcept
@@ -289,12 +306,6 @@ namespace track
       }
   
       [[nodiscard]] // auto is actually necessary here
-      constexpr auto& get_remote_parent (void) noexcept
-      {
-        return get_remote ().get_parent ();
-      }
-  
-      [[nodiscard]] // auto is actually necessary here
       constexpr auto& get_remote_parent (void) const noexcept
       {
         return get_remote ().get_parent ();
@@ -302,12 +313,12 @@ namespace track
   
       void set_remote (remote_base_type& remote) noexcept
       {
-        m_remote = &static_cast<remote_type&> (remote);
+        m_remote = &remote;
       }
   
     private:
   
-      std::optional<remote_type *> m_remote;
+      std::optional<remote_base_type *> m_remote;
   
     };
   
@@ -322,13 +333,15 @@ namespace track
     using remote_type     = RemoteDerived;
     using local_tag_type  = LocalBaseTag;
     using remote_tag_type = tracker_base_tag;
+    using remote_base_type = tracker_base<remote_type, local_type, 
+                                          remote_tag_type, local_tag_type>;
       
-      using remote_base_type = reporter_base<remote_type, local_type,
-                                             remote_tag_type, local_tag_type>;
+    using remote_reporter_type = reporter_base<remote_type, local_type,
+                                               remote_tag_type, local_tag_type>;
 
     private:
       
-      using self_iter = typename plf::list<remote_base_type>::iterator;
+      using self_iter = typename list<remote_reporter_type>::iterator;
   
   //    friend void remote_type::transfer_from (remote_type&& src,
   //                                            ext_citer_type pos) noexcept;
@@ -345,11 +358,11 @@ namespace track
       // orphan functions, but we need to allow the derived types to quickly
       // destroy instances.
   
-      explicit reporter_base (remote_type& remote)
+      explicit reporter_base (remote_base_type& remote)
         : m_data ({ &remote, remote.track (*this)})
       { }
   
-      explicit reporter_base (remote_type& remote, self_iter it)
+      explicit reporter_base (remote_base_type& remote, self_iter it)
         : m_data ({ &remote, it })
       { }
   
@@ -412,7 +425,7 @@ namespace track
         return get_remote ().get_offset (*get_self_iter ());
       }
   
-      reporter_base& rebind (remote_type& new_remote)
+      reporter_base& rebind (remote_base_type& new_remote)
       {
         // if the remotes are the same then this is already in the remote,
         // so we shouldn't do anything unless we aren't being tracked right now.
@@ -455,10 +468,10 @@ namespace track
   
       constexpr remote_type& get_remote (void) const noexcept
       {
-        return *std::get<remote_type *> (*m_data);
+        return static_cast<remote_type&> (get_remote_base ());
       }
   
-      constexpr remote_base_type& get_remote_reporter (void) const noexcept
+      constexpr remote_reporter_type& get_remote_reporter (void) const noexcept
       {
         return **get_self_iter ();
       }
@@ -481,20 +494,14 @@ namespace track
       }
   
       [[nodiscard]] // auto is actually necessary here
-      constexpr auto& get_remote_parent (void) noexcept 
-      {
-        return get_remote ().get_parent ();
-      }
-  
-      [[nodiscard]] // auto is actually necessary here
-      constexpr auto& get_remote_parent (void) const noexcept
+      constexpr auto& get_remote_parent (void) const noexcept 
       {
         return get_remote ().get_parent ();
       }
   
   //  protected:
   
-      void set (remote_type& remote, self_iter it) noexcept
+      void set (remote_base_type& remote, self_iter it) noexcept
       {
         m_data = { &remote, it };
       }
@@ -505,6 +512,11 @@ namespace track
       }
   
     private:
+
+      constexpr remote_base_type& get_remote_base (void) const noexcept
+      {
+        return *std::get<remote_base_type *> (*m_data);
+      }
       
       template <typename ...Args>
       constexpr void set_self_iter (Args&&... args) noexcept 
@@ -523,28 +535,32 @@ namespace track
         return std::get<std::optional<self_iter>> (*m_data);
       }
   
-      std::optional<std::pair<remote_type *, std::optional<self_iter>>> m_data;
+      std::optional<std::pair<remote_base_type *, 
+                              std::optional<self_iter>>> m_data;
   
     };
   
     //! Remote is one of the non-base classes defined here
-    template <typename LocalDerived, typename RemoteInterface, 
-              typename RemoteBaseTag>
+    template <typename LocalDerived, typename RemoteDerived, 
+              typename LocalBaseTag, typename RemoteBaseTag>
     class tracker_base
     {
     public:
   
       using local_type      = LocalDerived;
-      using remote_type     = typename RemoteInterface::derived_type;
+      using remote_type     = RemoteDerived;
       using local_tag_type  = tracker_base_tag;
       using remote_tag_type = RemoteBaseTag;
+      
+      using remote_base_type = typename RemoteBaseTag::template type<
+                     remote_type, local_type, remote_tag_type, local_tag_type>;
   
     protected:
   
       // Store pointers to the base types. Downcast when needed.
       using reporter_type   = reporter_base<local_type, remote_type,
                                             local_tag_type, remote_tag_type>;
-      using reporter_list   = plf::list<reporter_type>;
+      using reporter_list   = list<reporter_type>;
       using internal_iter   = typename reporter_list::iterator;
       using internal_citer  = typename reporter_list::const_iterator;
       using internal_riter  = typename reporter_list::reverse_iterator;
@@ -552,8 +568,8 @@ namespace track
       using internal_ref    = typename reporter_list::reference;
       using internal_cref   = typename reporter_list::const_reference;
       
-      using remote_reporter_type = typename reporter_type::remote_base_type;
-      using remote_reporter_list = plf::list<remote_reporter_type>;
+      using remote_reporter_type = typename reporter_type::remote_reporter_type;
+      using remote_reporter_list = list<remote_reporter_type>;
       using remote_internal_iter = typename remote_reporter_list::iterator;
   
     public:
@@ -677,13 +693,13 @@ namespace track
       }
   
       // safe, may throw
-      internal_iter track (remote_type& remote)
+      internal_iter track (remote_base_type& remote)
       {
         return m_reporters.emplace (m_reporters.end (), remote);
       }
   
       // safe, may throw
-      internal_iter track (remote_type& remote, remote_internal_iter it)
+      internal_iter track (remote_base_type& remote, remote_internal_iter it)
       {
         return m_reporters.emplace (m_reporters.end (), remote, it);
       }
@@ -726,10 +742,12 @@ namespace track
   
     };
   
-    template <typename LocalDerived, typename RemoteParent, 
-              typename RemoteTag, typename LocalParent, typename LocalTag>
+    template <typename LocalParent, typename RemoteParent, 
+              typename RemoteTag, typename LocalTag>
     class intrusive_reporter
-      : public reporter_base<LocalDerived,
+      : public reporter_base<typename LocalTag::template type<LocalParent, 
+                                                              RemoteParent, 
+                                                              RemoteTag>,
                              typename RemoteTag::template type<RemoteParent,
                                                                LocalParent,
                                                                LocalTag>,
@@ -737,17 +755,18 @@ namespace track
     {
     public:
   
-      using local_type = LocalDerived;
-      using remote_interface_type 
-        = typename RemoteTag::template type<RemoteParent, LocalParent, 
-                                            LocalTag>;
+      using local_type = typename LocalTag::template type<LocalParent,
+                                                          RemoteParent, 
+                                                          RemoteTag>;
+      
+      using remote_type = typename RemoteTag::template type<RemoteParent,
+                                                            LocalParent, 
+                                                            LocalTag>;
       using local_tag_type  = LocalTag;
       using remote_tag_type = RemoteTag;
-      using derived_type    = LocalDerived;
   
-      using base = reporter_base<LocalDerived,
-        typename RemoteTag::template type<RemoteParent, LocalParent, LocalTag>, 
-        reporter_base_tag, tag_base_t<RemoteTag>>;
+      using base = reporter_base<local_type, remote_type, reporter_base_tag, 
+                                 tag_base_t<RemoteTag>>;
   
       intrusive_reporter            (void)                          = default;
       intrusive_reporter            (const intrusive_reporter&)     = default;
@@ -780,7 +799,7 @@ namespace track
           base::orphan_remote ();
       }
   
-      explicit intrusive_reporter (remote_interface_type& remote)
+      explicit intrusive_reporter (remote_type& remote)
         : base (remote)
       { }
   
@@ -805,39 +824,42 @@ namespace track
         return true;
       }
   
-      constexpr local_type& get_parent (void) noexcept
+      constexpr LocalParent& get_parent (void) noexcept
       {
-        return static_cast<local_type&> (*this);
+        return static_cast<LocalParent&> (*this);
       }
-  
-      constexpr const local_type& get_parent (void) const noexcept
+      
+      constexpr const LocalParent& get_parent (void) const noexcept
       {
-        return static_cast<const local_type&> (*this);
+        return static_cast<const LocalParent&> (*this);
       }
   
     };
   
-    template <typename LocalDerived, typename RemoteParent, 
-              typename RemoteTag, typename LocalParent, typename LocalTag>
+    template <typename LocalParent, typename RemoteParent, 
+              typename RemoteTag, typename LocalTag>
     class intrusive_tracker
-      : public tracker_base<LocalDerived,
+      : public tracker_base<typename LocalTag::template type<LocalParent, 
+                                                             RemoteParent, 
+                                                             RemoteTag>,
                             typename RemoteTag::template type<RemoteParent, 
                                                               LocalParent,
                                                               LocalTag>,
-                            tag_base_t<RemoteTag>>
+                            tracker_base_tag, tag_base_t<RemoteTag>>
     {
     public:
   
-      using local_type = LocalDerived;
+      using local_type = typename LocalTag::template type<LocalParent,
+                                                          RemoteParent, 
+                                                          RemoteTag>;
+  
       using remote_type = typename RemoteTag::template type<RemoteParent,
                                                             LocalParent, 
                                                             LocalTag>;
       using remote_tag_type = RemoteTag;
-      using derived_type    = LocalDerived;
   
-      using base = tracker_base<LocalDerived,
-        typename RemoteTag::template type<RemoteParent, LocalParent, LocalTag>, 
-        tag_base_t<RemoteTag>>;
+      using base = tracker_base<local_type, remote_type, tracker_base_tag, 
+                                tag_base_t<RemoteTag>>;
     
       using internal_iter = typename base::internal_iter;
       using internal_citer = typename base::internal_citer;
@@ -912,14 +934,14 @@ namespace track
         return true;
       }
       
-      constexpr local_type& get_parent (void) noexcept
+      constexpr LocalParent& get_parent (void) noexcept
       {
-        return static_cast<local_type&> (*this);
+        return static_cast<LocalParent&> (*this);
       }
-  
-      constexpr const local_type& get_parent (void) const noexcept
+
+      constexpr const LocalParent& get_parent (void) const noexcept
       {
-        return static_cast<const local_type&> (*this);
+        return static_cast<const LocalParent&> (*this);
       }
       
       std::size_t get_offset (citer pos) const noexcept
@@ -937,10 +959,8 @@ namespace track
     template <typename LocalParent, typename RemoteParent,
       typename RemoteTag>
     class reporter
-      : public intrusive_reporter<reporter<LocalParent, RemoteParent, 
-                                           RemoteTag>, 
-                                  RemoteParent, RemoteTag, LocalParent, 
-                                  reporter_tag>
+      : public intrusive_reporter<LocalParent, RemoteParent,
+                                  RemoteTag, reporter_tag>
     {
     public:
   
@@ -949,10 +969,9 @@ namespace track
                                                             LocalParent,
                                                             reporter_tag>;
       using remote_tag_type = RemoteTag;
-      using derived_type    = reporter;
   
-      using base = intrusive_reporter<reporter, RemoteParent, RemoteTag, 
-                                      LocalParent, reporter_tag>;
+      using base = intrusive_reporter<LocalParent, RemoteParent,
+                                      RemoteTag, reporter_tag>;
   
   //    static_assert (std::is_base_of<remote_base_type, remote_type>::value,
   //                   "tracker base has unexpected type");
@@ -1026,19 +1045,17 @@ namespace track
     class tracker<LocalParent, RemoteParent, RemoteTag,
                   std::enable_if_t<std::is_base_of<reporter_base_tag, 
                                                    RemoteTag>::value>>
-      : public intrusive_tracker<tracker<LocalParent, RemoteParent, RemoteTag>, 
-                                 RemoteParent, RemoteTag, LocalParent, 
-                                 tracker_tag>
+      : public intrusive_tracker<LocalParent, RemoteParent, 
+                                 RemoteTag, tracker_tag>
     {
     public:
   
       using parent_type     = LocalParent;
       using remote_type     = RemoteParent;
       using remote_tag_type = reporter_tag;
-      using derived_type    = tracker;
   
-      using base = intrusive_tracker<tracker, RemoteParent, RemoteTag, 
-                                     LocalParent, tracker_tag>;
+      using base = intrusive_tracker<LocalParent, RemoteParent, 
+                                     reporter_tag, tracker_tag>;
   
       tracker            (void)               = default;
       tracker            (const tracker&)     = delete;
@@ -1100,18 +1117,16 @@ namespace track
     class tracker<LocalParent, RemoteParent, RemoteTag,
                   std::enable_if_t<std::is_base_of<tracker_base_tag,
                                                    RemoteTag>::value>>
-      : public intrusive_tracker<tracker<LocalParent, RemoteParent, RemoteTag>, 
-                                 RemoteParent, RemoteTag, LocalParent, 
-                                 tracker_tag>
+      : public intrusive_tracker<LocalParent, RemoteParent,
+                                 RemoteTag, tracker_tag>
     {
     public:
   
       using parent_type     = LocalParent;
       using remote_tag_type = tracker_tag;
-      using derived_type    = tracker;
   
-      using base = intrusive_tracker<tracker, RemoteParent, RemoteTag, 
-                                     LocalParent, tracker_tag>;
+      using base = intrusive_tracker<LocalParent, RemoteParent, 
+                                     tracker_tag, tracker_tag>;
 
       using remote_type     = typename base::remote_type;
       
@@ -1128,15 +1143,15 @@ namespace track
   //  tracker            (const tracker&)     = impl;
       tracker            (tracker&&) noexcept = default;
   //  tracker& operator= (const tracker&)     = impl;
-      tracker& operator= (tracker&&) noexcept = default;
+  //  tracker& operator= (tracker&&) noexcept = impl;
       ~tracker           (void)               = default;
   
       explicit tracker (parent_type& parent)
-        : base (parent)
+        : m_parent (&parent)
       { }
   
       explicit tracker (parent_type& parent, remote_type& remote)
-        : base (parent)
+        : m_parent (&parent)
       {
         internal_bind (remote);
       }
@@ -1148,19 +1163,27 @@ namespace track
       }
   
       tracker (const tracker& other, parent_type& parent)
-        : base (parent)
+        : m_parent (&parent)
       {
         copy_reporters (other);
       }
   
       tracker (tracker&& other, parent_type& parent) noexcept
-        : base (std::move (other), parent)
+        : base (std::move (other)),
+          m_parent (&parent)
       { }
   
       tracker& operator= (const tracker& other)
       {
         if (&other != this)
           overwrite_reporters (other);
+        return *this;
+      }
+
+      // explicitly defined so that m_parent doesn't get implicitly reset
+      tracker& operator= (tracker&& other) noexcept
+      {
+        base::operator= (std::move (other));
         return *this;
       }
   
@@ -1201,6 +1224,18 @@ namespace track
       {
         return this->untrack (this->internal_begin (),
                               internal_copy_reporters (other));
+      }
+
+      [[nodiscard]]
+      constexpr bool has_parent (void) const noexcept
+      {
+        return m_parent.has_value ();
+      }
+
+      [[nodiscard]]
+      constexpr parent_type& get_parent (void) const noexcept
+      {
+        return **m_parent;
       }
       
     private:
@@ -1248,6 +1283,8 @@ namespace track
           }
         return it;
       }
+
+      std::optional<parent_type *> m_parent;
       
     };
   
@@ -1280,15 +1317,15 @@ namespace track
   using detail::reporter_tag;
   using detail::tracker_tag;
 
-  template <typename LocalDerived, typename RemoteParent, 
+  template <typename LocalParent, typename RemoteParent, 
             typename RemoteTag = tracker_tag>
-  using intrusive_reporter = detail::intrusive_reporter<LocalDerived,
+  using intrusive_reporter = detail::intrusive_reporter<LocalParent,
                                                         RemoteParent, 
                                                         RemoteTag>;
 
-  template <typename LocalDerived, typename RemoteParent, 
+  template <typename LocalParent, typename RemoteParent, 
             typename RemoteTag = reporter_tag>
-  using intrusive_tracker = detail::intrusive_tracker<LocalDerived, 
+  using intrusive_tracker = detail::intrusive_tracker<LocalParent, 
                                                       RemoteParent, 
                                                       RemoteTag>;
 
