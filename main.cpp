@@ -11,7 +11,7 @@
 
 using namespace track;
 
-constexpr std::size_t multiplier = 1;
+constexpr std::size_t multiplier = 100;
 
 class parent;
 class child;

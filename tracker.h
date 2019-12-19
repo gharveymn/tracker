@@ -310,10 +310,11 @@ namespace track
       {
         return get_remote ().get_parent ();
       }
-  
-      void set_remote (remote_base_type& remote) noexcept
+
+      reporter_base& set_remote (remote_base_type& remote) noexcept
       {
         m_remote = &remote;
+        return *this;
       }
   
     private:
@@ -501,9 +502,10 @@ namespace track
   
   //  protected:
   
-      void set (remote_base_type& remote, self_iter it) noexcept
+      reporter_base& set (remote_base_type& remote, self_iter it) noexcept
       {
         m_data = { &remote, it };
+        return *this;
       }
       
       void reset (void) noexcept 
@@ -1100,6 +1102,14 @@ namespace track
       {
         return **m_parent;
       }
+
+      // FIXME: Ugly.
+      typename base::internal_iter internal_bind (remote_type& remote)
+      {
+        typename base::internal_iter it = this->track ();
+        it->set_remote (remote.set (*this, it));
+        return it;
+      }
       
     protected:
       
@@ -1123,10 +1133,10 @@ namespace track
     public:
   
       using parent_type     = LocalParent;
-      using remote_tag_type = tracker_tag;
+      using remote_tag_type = RemoteTag;
   
-      using base = intrusive_tracker<LocalParent, RemoteParent, 
-                                     tracker_tag, tracker_tag>;
+      using base = intrusive_tracker<LocalParent, RemoteParent,
+                                     RemoteTag, tracker_tag>;
 
       using remote_type     = typename base::remote_type;
       
@@ -1134,8 +1144,6 @@ namespace track
       
       using internal_iter = typename base::internal_iter;
       using internal_citer = typename base::internal_citer;
-      
-      using citer = typename base::citer;
       
     public:
   
@@ -1187,40 +1195,17 @@ namespace track
         return *this;
       }
   
-      template <typename Compare, typename Head, typename ...Tail>
-      struct all_same
-        : std::integral_constant<bool, std::is_same<Compare, Head>::value
-                                       && all_same<Compare, Tail...>::value>
-      { };
-  
-      template <typename Compare, typename T>
-      struct all_same<Compare, T> : std::is_same<Compare, T>
-      { };
-  
-      template <typename ...Args>
-      typename std::enable_if<all_same<remote_type, Args...>::value>::type
-      bind (remote_type& r, Args&... args)
-      {
-        internal_bind (r);
-        bind (args...);
-      }
-  
-      citer bind (remote_type& r)
-      {
-        return internal_bind (r);
-      }
-  
       void swap (tracker& other) noexcept
       {
         base::swap (other);
       }
   
-      citer copy_reporters (const tracker& other)
+      typename base::citer copy_reporters (const tracker& other)
       {
         return internal_copy_reporters (other);
       }
-  
-      citer overwrite_reporters (const tracker& other)
+
+      typename base::citer overwrite_reporters (const tracker& other)
       {
         return this->untrack (this->internal_begin (),
                               internal_copy_reporters (other));
@@ -1236,6 +1221,22 @@ namespace track
       constexpr parent_type& get_parent (void) const noexcept
       {
         return **m_parent;
+      }
+
+      internal_iter internal_bind (remote_type& remote)
+      {
+        internal_iter it = this->track ();
+        try
+          {
+            it->set (remote, remote.track (*this, it));
+          }
+        catch (...)
+          {
+            // the node reporter_ptr holds no information, so it is safe to erase
+            this->erase (it);
+            throw;
+          }
+        return it;
       }
       
     private:
@@ -1267,33 +1268,10 @@ namespace track
       {
         return static_cast<remote_type&> (cit->get_remote ());
       }
-      
-      internal_iter internal_bind (remote_type& remote)
-      {
-        internal_iter it = this->track ();
-        try
-          {
-            it->set (remote, remote.track (*this, it));
-          }
-        catch (...)
-          {
-            // the node reporter_ptr holds no information, so it is safe to erase
-            this->erase (it);
-            throw;
-          }
-        return it;
-      }
 
       std::optional<parent_type *> m_parent;
       
     };
-  
-    template <typename ...Types>
-    void bind (tracker<Types...>& l, 
-               typename tracker<Types...>::remote_type& r)
-    {
-      l.bind (r);
-    }
   
 //    template <typename Derived, typename RemoteParent>
 //    using intusive_reporter_nt = intrusive_reporter<
@@ -1311,36 +1289,152 @@ namespace track
 //                 tracker<RemoteParent, reporter_nt<LocalParent, RemoteParent>>>
 //    { };
   }
+
+  template <typename LocalParent, typename RemoteParent, typename RemoteTag>
+  struct intrusive_reporter;
+
+  template <typename LocalParent, typename RemoteParent, typename RemoteTag>
+  struct reporter;
+
+  template <typename LocalParent, typename RemoteParent, typename RemoteTag>
+  struct intrusive_tracker;
+
+  template <typename LocalParent, typename RemoteParent, typename RemoteTag>
+  struct tracker;
+
+  struct intrusive_reporter_tag
+  {
+    using base = detail::intrusive_reporter_tag;
+    template <typename ...Ts>
+    using type = intrusive_reporter<Ts...>;
+  };
+
+  struct intrusive_tracker_tag
+  {
+    using base = detail::intrusive_tracker_tag;
+    template <typename ...Ts>
+    using type = intrusive_tracker<Ts...>;
+  };
   
-  using detail::intrusive_reporter_tag;
-  using detail::intrusive_tracker_tag;
-  using detail::reporter_tag;
-  using detail::tracker_tag;
+  struct reporter_tag
+  { 
+    using base = detail::reporter_tag;
+    template <typename ...Ts>
+    using type = reporter<Ts...>;
+  };
+
+  struct tracker_tag
+  {
+    using base = detail::tracker_tag;
+    template <typename ...Ts>
+    using type = tracker<Ts...>;
+  };
+  
+//  template <typename Tag, typename ...Ts>
+//  using tag_type = typename Tag::template type<Ts...>;
 
   template <typename LocalParent, typename RemoteParent, 
             typename RemoteTag = tracker_tag>
-  using intrusive_reporter = detail::intrusive_reporter<LocalParent,
-                                                        RemoteParent, 
-                                                        RemoteTag>;
+  struct intrusive_reporter 
+    : public detail::intrusive_reporter<LocalParent, RemoteParent, 
+                                        typename RemoteTag::base>
+  {
+    using base = detail::intrusive_reporter<LocalParent, RemoteParent,
+                                            typename RemoteTag::base>;
+  public:
+    using remote_type = typename RemoteTag::template type<RemoteParent,
+                                                          LocalParent,
+                                                       intrusive_reporter_tag>;
+    using base::base;
+  };
 
   template <typename LocalParent, typename RemoteParent, 
             typename RemoteTag = reporter_tag>
-  using intrusive_tracker = detail::intrusive_tracker<LocalParent, 
-                                                      RemoteParent, 
-                                                      RemoteTag>;
+  class intrusive_tracker 
+    : public detail::intrusive_tracker<LocalParent, RemoteParent, 
+                                       typename RemoteTag::base>
+  {
+    using base = detail::intrusive_tracker<LocalParent, RemoteParent,
+                                           typename RemoteTag::base>;
+  public:
+    using remote_type = typename RemoteTag::template type<RemoteParent,
+                                                          LocalParent,
+                                                        intrusive_tracker_tag>;
+    using base::base;
+    using iter = typename base::iter;
+    using citer = typename base::citer;
+    using riter = typename base::riter;
+    using criter = typename base::criter;
+  };
 
   template <typename LocalParent, typename RemoteParent,
             typename RemoteTag = tracker_tag>
-  using reporter = detail::reporter<LocalParent, RemoteParent, RemoteTag>;
+  class reporter 
+    : public detail::reporter<LocalParent, RemoteParent, 
+                              typename RemoteTag::base>
+  {
+    using base = detail::reporter<LocalParent, RemoteParent,
+                                  typename RemoteTag::base>;
+  public:
+    using remote_type = typename RemoteTag::template type<RemoteParent,
+                                                          LocalParent,
+                                                          reporter_tag>;
+    using base::base;
+  };
 
   template <typename LocalParent, typename RemoteParent, 
             typename RemoteTag = reporter_tag>
-  using tracker = detail::tracker<LocalParent, RemoteParent, RemoteTag>;
+  class tracker 
+    : public detail::tracker<LocalParent, RemoteParent, 
+                             typename RemoteTag::base>
+  {
+
+    template <typename Compare, typename Head, typename ...Tail>
+    struct all_same
+      : std::integral_constant<bool, std::is_same<Compare, Head>::value
+                                     && all_same<Compare, Tail...>::value>
+    { };
+
+    template <typename Compare, typename T>
+    struct all_same<Compare, T> : std::is_same<Compare, T>
+    { };
+    
+    using base = detail::tracker<LocalParent, RemoteParent,
+                                 typename RemoteTag::base>;
+    
+  public:
+    using remote_type = typename RemoteTag::template type<RemoteParent, 
+                                                          LocalParent, 
+                                                          tracker_tag>;
+    using base::base;
+    using iter = typename base::iter;
+    using citer = typename base::citer;
+    using riter = typename base::riter;
+    using criter = typename base::criter;
+
+    template <typename ...Args>
+    typename std::enable_if<all_same<remote_type, Args...>::value>::type
+    bind (remote_type& r, Args&... args)
+    {
+      base::internal_bind (r);
+      bind (args...);
+    }
+
+    citer bind (remote_type& r)
+    {
+      return base::internal_bind (r);
+    }
+    
+  };
   
   template <typename LocalParent, typename RemoteParent = LocalParent>
   using multireporter = tracker<LocalParent, RemoteParent, tracker_tag>;
-  
-  using detail::bind;
+
+  template <typename ...Ts, typename ...RemoteTypes>
+  void bind (tracker<Ts...>& l, RemoteTypes&... Remotes)
+  {
+    l.bind (Remotes...);
+  }
   
 }
 
