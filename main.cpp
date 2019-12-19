@@ -582,7 +582,7 @@ public:
   
   std::string print (void) const noexcept 
   {
-    std::ostringstream oss;
+    std::ostringstream oss {};
     oss << *this;
     return oss.str ();
   }
@@ -648,7 +648,7 @@ public:
 
   std::string print (void) const noexcept
   {
-    std::ostringstream oss;
+    std::ostringstream oss {};
     oss << *this;
     return oss.str ();
   }
@@ -715,31 +715,30 @@ std::chrono::duration<double> perf_create (void)
       children.emplace_back (p.create ());
     }
     
-  auto print_num_children = [] (Parent& parent) 
-    { std::cout << parent.num_children () << std::endl;};
+  auto print_num_children = [&p, &q] (void) 
+    { 
+      std::cout << p.num_children () << "\n" 
+                << q.num_children () << "\n" << std::endl;
+    };
 
-  print_num_children (p);
-  print_num_children (q);
-  
-  std::cout << std::endl;
+  print_num_children ();
 
   q.transfer_from (p);
+
+  print_num_children ();
+  
   p.transfer_from (q);
 
-  print_num_children (p);
-  print_num_children (q);
-
-  std::cout << std::endl;
+  print_num_children ();
 
   std::random_device rd;
-  std::mt19937 gen (rd());
-  std::uniform_int_distribution<std::size_t> dist (0, 100);
-  for (std::size_t i = 0; i < 100; ++i)
+  std::mt19937 gen (rd ());
+  std::uniform_real_distribution dist (0.0, 1.0);
+  for (std::size_t i = 0; i < multiplier; ++i)
     {
       for (auto it = children.begin (); it != children.end (); )
       {
-//        if (dist (gen) < 15)
-        if (std::rand () < RAND_MAX * 0.15)
+        if (dist (gen) < 1.0 / multiplier)
           {
             children.erase (it++);
             continue;
@@ -748,16 +747,15 @@ std::chrono::duration<double> perf_create (void)
       }
     }
 
-  print_num_children (p);
-  print_num_children (q);
-  std::cout << std::endl;
+  print_num_children ();
 
   q.transfer_from (p);
+
+  print_num_children ();
+  
   p.transfer_from (q);
 
-  print_num_children (p);
-  print_num_children (q);
-  std::cout << std::endl;
+  print_num_children ();
 
   children.clear ();
 
@@ -786,8 +784,8 @@ std::chrono::duration<double> perf_access (void)
     }
 
   std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<std::size_t> dist (0, 100);
+  std::mt19937 gen (rd ());
+  std::uniform_int_distribution<std::size_t> dist (0, 99);
   for (std::size_t i = 0; i < 10 ; ++i)
     {
       for (const Child& r : p)

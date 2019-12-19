@@ -715,6 +715,12 @@ namespace track
       {
         return m_reporters.emplace (m_reporters.end (), remote, it);
       }
+      
+      internal_iter append_uninit (std::size_t num)
+      {
+        return m_reporters.insert (m_reporters.cend (), num, 
+                                   remote_base_type {});
+      }
   
       // safe
       internal_iter untrack (internal_iter pos)
@@ -1242,8 +1248,7 @@ namespace track
           }
         catch (...)
           {
-            // the node reporter_ptr holds no information, so it is 
-            // safe to erase
+            // the node reporter_ptr holds no information, so it is safe to erase
             this->erase (it);
             throw;
           }
@@ -1256,15 +1261,18 @@ namespace track
       {
         if (other.has_reporters ())
           {
-            internal_iter pivot = internal_bind (other.internal_front ()
-                                                      .fetch_remote ());
+            internal_iter other_begin = other.internal_begin(),
+                          other_end   = other.internal_end ();
+            
+            auto binder = [this] (auto&& reporter)
+                          {
+                            return internal_bind (reporter.fetch_remote ());
+                          };
+            
+            internal_iter pivot = binder (*other_begin);
             try
               {
-                for (internal_citer cit = ++other.internal_begin ();
-                     cit != other.internal_end (); ++cit)
-                  {
-                    internal_bind (cit->fetch_remote ());
-                  }
+                std::for_each (std::next (other_begin), other_end, binder);
               }
             catch (...)
               {
@@ -1284,22 +1292,6 @@ namespace track
       std::optional<parent_type *> m_parent;
       
     };
-  
-//    template <typename Derived, typename RemoteParent>
-//    using intusive_reporter_nt = intrusive_reporter<
-//      Derived, tracker<RemoteParent, Derived>>;
-//  
-//    template <typename LocalParent, typename RemoteParent>
-//    struct reporter_nt;
-//  
-//    template <typename LocalParent, typename RemoteParent>
-//    struct reporter_nt;
-//  
-//    template <typename LocalParent, typename RemoteParent>
-//    struct reporter_nt 
-//      : reporter<LocalParent, 
-//                 tracker<RemoteParent, reporter_nt<LocalParent, RemoteParent>>>
-//    { };
   }
 
   template <typename LocalParent, typename RemoteParent, typename RemoteTag>
