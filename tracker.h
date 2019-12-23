@@ -13,9 +13,9 @@
 
 #include <plf_list.h>
 #include <iterator>
-#include <optional>
+#include <optional_ref.hpp>
 
-namespace track
+namespace trk
 {
   
   namespace detail
@@ -270,7 +270,7 @@ namespace track
       ~reporter_base           (void)                           = default;
   
       explicit constexpr reporter_base (remote_base_type& remote) noexcept
-        : m_remote (&remote)
+        : m_remote (remote)
       { }
       
       void orphan_remote (void) noexcept 
@@ -278,22 +278,14 @@ namespace track
         if (has_remote ())
           fetch_remote ().orphan ();
       }
-  
-      constexpr bool has_remote (void) const noexcept
-      {
-        return m_remote.has_value ();
-      }
       
+      [[nodiscard]]
       constexpr bool is_tracked (void) const noexcept 
       {
         return has_remote ();
       }
-  
-      constexpr remote_type& fetch_remote (void) const noexcept
-      {
-        return static_cast<remote_type&> (**m_remote);
-      }
-      
+
+      [[nodiscard]]
       constexpr remote_type& fetch_remote_reporter (void) const noexcept
       {
         return fetch_remote ();
@@ -310,16 +302,28 @@ namespace track
       {
         return fetch_remote ().fetch_parent ();
       }
-
+      
       reporter_base& set_remote (remote_base_type& remote) noexcept
       {
-        m_remote.emplace (&remote);
+        m_remote = remote;
         return *this;
+      }
+
+      [[nodiscard]]
+      constexpr bool has_remote (void) const noexcept
+      {
+        return m_remote.has_value ();
+      }
+
+      [[nodiscard]]
+      constexpr remote_type& fetch_remote (void) const noexcept
+      {
+        return static_cast<remote_type&> (*m_remote);
       }
   
     private:
   
-      std::optional<remote_base_type *> m_remote;
+      gch::optional_ref<remote_base_type> m_remote;
   
     };
   
@@ -360,23 +364,27 @@ namespace track
       // destroy instances.
   
       explicit reporter_base (remote_base_type& remote)
-        : m_data (std::in_place, &remote, remote.track (*this))
+        : m_remote (remote),
+          m_self_iter (remote.track (*this)),
+          m_is_tracked (true)
       { }
   
       explicit reporter_base (remote_base_type& remote, self_iter it)
-        : m_data (std::in_place, &remote, it)
+        : m_remote (remote),
+          m_self_iter (it),
+          m_is_tracked (true)
       { }
   
       reporter_base (const reporter_base& other)
-        : m_data (other.has_remote ()
-                  ? decltype (m_data) (std::in_place, &other.fetch_remote (),
-                                         other.fetch_remote ().track (*this))
-                  : std::nullopt)
-      { }
+        : m_remote (other.m_remote)
+      { 
+        if (other.has_remote ())
+          set_self_iter (other.fetch_remote ().track (*this));
+      }
   
       reporter_base (reporter_base&& other) noexcept
-        : m_data (std::move (other.m_data))
       {
+        this->set (other);
         other.reset ();
       }
   
@@ -402,8 +410,7 @@ namespace track
           {
             if (is_tracked ())
               fetch_remote ().orphan (fetch_self_iter ());
-  
-            m_data = std::move (other.m_data);
+            this->set (other);
             other.reset ();
           }
         return *this;
@@ -439,9 +446,9 @@ namespace track
             if (is_tracked ())
               fetch_remote ().orphan (fetch_self_iter ());
             
-            m_data.emplace (&new_remote, new_iter);
+            set (new_remote, new_iter);
           }
-        else if (! fetch_opt_self_iter ().has_value ())
+        else if (! is_tracked ())
           {
             set_self_iter (new_remote.track (*this));
           }
@@ -452,19 +459,21 @@ namespace track
       void swap (reporter_base& other) noexcept
       {
         using std::swap;
-        swap (m_data, other.m_data);
-      }
-  
-      [[nodiscard]]
-      constexpr bool has_remote (void) const noexcept
-      {
-        return m_data.has_value ();
+        swap (this->m_remote, other.m_remote);
+        swap (this->m_self_iter, other.m_self_iter);
+        swap (this->m_is_tracked, other.m_is_tracked);
       }
   
       [[nodiscard]]
       constexpr bool is_tracked (void) const noexcept
       {
-        return has_remote () && fetch_opt_self_iter ().has_value ();
+        return m_is_tracked;
+      }
+      
+      [[nodiscard]]
+      constexpr bool has_remote (void) const noexcept
+      {
+        return m_remote.has_value ();
       }
   
       constexpr remote_type& fetch_remote (void) const noexcept
@@ -484,12 +493,9 @@ namespace track
           reset_self_iter ();
       }
   
-      void set_remote (remote_base_type& remote) noexcept
+      constexpr void set_remote (remote_base_type& remote) noexcept
       {
-        if (has_remote ())
-          std::get<remote_base_type *> (*m_data) = &remote;
-        else
-          m_data.emplace (&remote, std::nullopt);
+        m_remote.emplace (remote);
       }
   
       [[nodiscard]]
@@ -506,49 +512,53 @@ namespace track
   
   //  protected:
   
+      reporter_base& set (const reporter_base& other) noexcept
+      {
+        m_remote = other.m_remote;
+        if ((m_is_tracked = other.m_is_tracked))
+          m_self_iter = other.m_self_iter;
+        return *this;
+      }
+  
       reporter_base& set (remote_base_type& remote, self_iter it) noexcept
       {
-        m_data.emplace (&remote, it);
+        set_remote (remote);
+        set_self_iter (it);
         return *this;
       }
       
       void reset (void) noexcept 
       {
-        m_data.reset ();
+        m_remote.reset ();
+        m_is_tracked = false;
       }
   
     private:
 
       constexpr remote_base_type& fetch_remote_base (void) const noexcept
       {
-        return *std::get<remote_base_type *> (*m_data);
+        return *m_remote;
       }
       
-      template <typename ...Args>
-      constexpr void set_self_iter (Args&&... args) noexcept 
+      constexpr void set_self_iter (self_iter it) noexcept 
       {
-        m_data->second.emplace (std::forward<Args> (args)...);
+        m_self_iter = it;
+        m_is_tracked = true;
       }
   
       constexpr void reset_self_iter (void) noexcept
       {
-        m_data->second.reset ();
-      }
-  
-      constexpr const std::optional<self_iter>& 
-      fetch_opt_self_iter (void) const noexcept
-      {
-        return std::get<std::optional<self_iter>> (*m_data);
+        m_is_tracked = false;
       }
 
-      constexpr self_iter
-      fetch_self_iter (void) const noexcept
+      constexpr self_iter fetch_self_iter (void) const noexcept
       {
-        return *fetch_opt_self_iter ();
+        return m_self_iter;
       }
   
-      std::optional<std::pair<remote_base_type *, 
-                              std::optional<self_iter>>> m_data;
+      gch::optional_ref<remote_base_type> m_remote;
+      self_iter m_self_iter;
+      bool      m_is_tracked = false;
   
     };
   
@@ -1007,17 +1017,17 @@ namespace track
   
       explicit reporter (remote_type& remote, parent_type& parent)
         : base (remote),
-          m_parent (&parent)
+          m_parent (parent)
       { }
   
       reporter (const reporter& other, parent_type& new_parent)
         : base (other),
-          m_parent (&new_parent)
+          m_parent (new_parent)
       { }
   
       reporter (reporter&& other, parent_type& new_parent) noexcept
         : base (std::move (other)),
-          m_parent (&new_parent)
+          m_parent (new_parent)
       { }
   
       reporter& operator= (const reporter& other)
@@ -1050,12 +1060,12 @@ namespace track
       [[nodiscard]]
       constexpr parent_type& fetch_parent (void) const noexcept
       {
-        return **m_parent;
+        return *m_parent;
       }
   
     private:
       
-      std::optional<parent_type *> m_parent;
+      gch::optional_ref<parent_type> m_parent;
       
     };
   
@@ -1083,14 +1093,14 @@ namespace track
       ~tracker           (void)               = default;
       
       explicit tracker (parent_type& parent)
-        : m_parent (&parent)
+        : m_parent (parent)
       { }
   
       tracker (const tracker& other, parent_type& new_parent) = delete;
   
       tracker (tracker&& other, parent_type& new_parent) noexcept
         : base (std::move (other)),
-          m_parent (&new_parent)
+          m_parent (new_parent)
       { }
       
       // explicitly defined so that m_parent doesn't get implicitly reset
@@ -1106,25 +1116,25 @@ namespace track
         using std::swap;
         swap (m_parent, other.m_parent); // caution!
       }
-  
-      [[nodiscard]]
-      constexpr bool has_parent (void) const noexcept
-      {
-        return m_parent.has_value ();
-      }
-  
-      [[nodiscard]]
-      constexpr parent_type& fetch_parent (void) const noexcept
-      {
-        return **m_parent;
-      }
-
+      
       // FIXME: Ugly.
       typename base::internal_iter internal_bind (remote_type& remote)
       {
         typename base::internal_iter it = this->track ();
         it->set_remote (remote.set (*this, it));
         return it;
+      }
+
+      [[nodiscard]]
+      constexpr bool has_parent (void) const noexcept
+      {
+        return m_parent.has_value ();
+      }
+
+      [[nodiscard]]
+      constexpr parent_type& fetch_parent (void) const noexcept
+      {
+        return *m_parent;
       }
       
     protected:
@@ -1135,7 +1145,7 @@ namespace track
   
     private:
       
-      std::optional<parent_type *> m_parent;
+      gch::optional_ref<parent_type> m_parent;
   
     };
   
@@ -1171,11 +1181,11 @@ namespace track
       ~tracker           (void)               = default;
   
       explicit tracker (parent_type& parent)
-        : m_parent (&parent)
+        : m_parent (parent)
       { }
   
       explicit tracker (parent_type& parent, remote_type& remote)
-        : m_parent (&parent)
+        : m_parent (parent)
       {
         internal_bind (remote);
       }
@@ -1187,14 +1197,14 @@ namespace track
       }
   
       tracker (const tracker& other, parent_type& parent)
-        : m_parent (&parent)
+        : m_parent (parent)
       {
         copy_reporters (other);
       }
   
       tracker (tracker&& other, parent_type& parent) noexcept
         : base (std::move (other)),
-          m_parent (&parent)
+          m_parent (parent)
       { }
   
       tracker& operator= (const tracker& other)
@@ -1236,7 +1246,7 @@ namespace track
       [[nodiscard]]
       constexpr parent_type& fetch_parent (void) const noexcept
       {
-        return **m_parent;
+        return *m_parent;
       }
 
       internal_iter internal_bind (remote_type& remote)
@@ -1289,7 +1299,7 @@ namespace track
         return static_cast<remote_type&> (cit->fetch_remote ());
       }
 
-      std::optional<parent_type *> m_parent;
+      gch::optional_ref<parent_type> m_parent;
       
     };
   }

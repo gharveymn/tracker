@@ -9,7 +9,7 @@
 
 #include "tracker.h"
 
-using namespace track;
+using namespace trk;
 
 constexpr std::size_t multiplier = 100;
 
@@ -20,7 +20,7 @@ class child : public intrusive_reporter<child, parent>
 {
 public:
 
-  using base = track::intrusive_reporter<child, parent>;
+  using base = trk::intrusive_reporter<child, parent>;
 
   child (void) = default;
 
