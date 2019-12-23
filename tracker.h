@@ -1350,6 +1350,8 @@ namespace track
                                                           LocalParent,
                                                        intrusive_reporter_tag>;
     using base::base;
+    using base::has_remote_parent;
+    using base::fetch_remote_parent;
   };
 
   template <typename LocalParent, typename RemoteParent, 
@@ -1384,6 +1386,8 @@ namespace track
                                                           LocalParent,
                                                           reporter_tag>;
     using base::base;
+    using base::has_remote_parent;
+    using base::fetch_remote_parent;
   };
 
   template <typename LocalParent, typename RemoteParent, 
