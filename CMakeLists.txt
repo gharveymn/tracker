@@ -5,6 +5,7 @@ SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_EXTENSIONS OFF)
 
 INCLUDE_DIRECTORIES(external/plf_list)
+INCLUDE_DIRECTORIES(external/optional_ref/include)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")
 
