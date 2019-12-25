@@ -569,7 +569,7 @@ namespace trk
     template <>
     auto
     tracker_base<tracker_base_tag>::base_bind (remote_base_type& remote)
-    -> base_iter
+      -> base_iter
     {
       base_iter it = this->track ();
       try
