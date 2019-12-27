@@ -5,15 +5,19 @@ PROJECT(tracker
 
 INCLUDE(cmake/create-package.cmake)
 
-CREATE_HEADER_ONLY_PACKAGE(AUTHOR       gch
+CREATE_HEADER_ONLY_PACKAGE(AUTHOR       gharveymn
                            NAME         tracker
                            DEPENDENCIES optional_ref plf_list
                            HEADERS      tracker.hpp)
 
 # Options
-OPTION(TRACKER_BUILD_TESTS "Set to ON to build tests" ON)
+IF(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+  OPTION(TRACKER_BUILD_TESTS "Set to ON to build tests" ON)
+ELSE()
+  OPTION(TRACKER_BUILD_TESTS "Set to ON to build tests" OFF)
+ENDIF()
 
 # Only include tests if we are at the top level
-IF(TRACKER_BUILD_TESTS AND (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+IF(TRACKER_BUILD_TESTS)
   ADD_SUBDIRECTORY(test)
 ENDIF()
