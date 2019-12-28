@@ -16,6 +16,6 @@ if (UNIX)
 endif()
 
 SET_TARGET_PROPERTIES(test_tracker PROPERTIES
-                      CXX_STANDARD          17
+                      CXX_STANDARD          11
                       CXX_STANDARD_REQUIRED NO
                       CXX_EXTENSIONS        NO)
