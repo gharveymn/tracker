@@ -9,9 +9,9 @@
 
 #include <tracker.hpp>
 
-using namespace trk;
+using namespace gch;
 
-constexpr std::size_t multiplier = 100;
+constexpr std::size_t multiplier = 75;
 
 template <template <typename ...> class Interface>
 struct interface_traits
@@ -20,25 +20,25 @@ struct interface_traits
 template <>
 struct interface_traits<intrusive_reporter>
 {
-  using tag = intrusive_reporter_tag;
+  using tag = tag::intrusive_reporter;
 };
 
 template <>
 struct interface_traits<reporter>
 {
-  using tag = reporter_tag;
+  using tag = tag::reporter;
 };
 
 template <>
 struct interface_traits<intrusive_tracker>
 {
-  using tag = intrusive_tracker_tag;
+  using tag = tag::intrusive_tracker;
 };
 
 template <>
 struct interface_traits<tracker>
 {
-  using tag = tracker_tag;
+  using tag = tag::tracker;
 };
 
 template <template <typename ...> class Interface>
@@ -51,8 +51,8 @@ struct ichild_r : intrusive_reporter<ichild_r<Remote, RemoteTag>, Remote, Remote
 
   ichild_r (void) = default;
 
-  explicit ichild_r (typename base::remote_type& remote)
-    : base (trk::bind_with, remote)
+  explicit ichild_r (typename base::remote_interface_type& remote)
+    : base (gch::bind_with, remote)
   { }
 };
 
@@ -63,8 +63,8 @@ struct nchild_r
 
   nchild_r (void) = default;
 
-  explicit nchild_r (typename reporter_type::remote_type& remote)
-    : m_reporter (trk::bind_with, remote)
+  explicit nchild_r (typename reporter_type::remote_interface_type& remote)
+    : m_reporter (gch::bind_with, remote)
   { }
 
   reporter_type m_reporter;
@@ -78,7 +78,7 @@ struct ichild_t : intrusive_tracker<ichild_t<Remote, RemoteTag>, Remote, RemoteT
 
   ichild_t (void) = default;
 
-  explicit ichild_t (typename base::remote_type& remote)
+  explicit ichild_t (typename base::remote_interface_type& remote)
   { }
 
 };
@@ -90,7 +90,7 @@ struct nchild_t
 
   nchild_t (void) = default;
 
-  explicit nchild_t (typename tracker_type::remote_type& remote)
+  explicit nchild_t (typename tracker_type::remote_interface_type& remote)
   { }
 
   tracker_type m_tracker;
@@ -107,9 +107,9 @@ struct iparent_r
 
   iparent_r (void) = default;
 
-  Child<iparent_r, intrusive_reporter_tag> create (void)
+  Child<iparent_r, tag::intrusive_reporter> create (void)
   {
-    return Child<iparent_r, intrusive_reporter_tag> (*this);
+    return Child<iparent_r, tag::intrusive_reporter> (*this);
   }
 
 };
@@ -120,9 +120,9 @@ struct nparent_r
 
   nparent_r (void) = default;
 
-  Child<nparent_r, reporter_tag> create (void)
+  Child<nparent_r, tag::reporter> create (void)
   {
-    return Child<nparent_r, reporter_tag> (m_reporter);
+    return Child<nparent_r, tag::reporter> (m_reporter);
   }
 
   base_type<nparent_r, reporter, Child, RemoteTag> m_reporter;
@@ -135,9 +135,9 @@ struct iparent_t : base_type<iparent_t<Child, RemoteTag>, intrusive_tracker, Chi
 
   iparent_t (void) = default;
 
-  Child<iparent_t, intrusive_tracker_tag> create (void)
+  Child<iparent_t, tag::intrusive_tracker> create (void)
   {
-    return Child<iparent_t, intrusive_tracker_tag> (*this);
+    return Child<iparent_t, tag::intrusive_tracker> (*this);
   }
 
 };
@@ -148,54 +148,54 @@ struct nparent_t
 
   nparent_t (void) = default;
 
-  Child<nparent_t, tracker_tag> create (void)
+  Child<nparent_t, tag::tracker> create (void)
   {
-    return Child<nparent_t, tracker_tag> (m_tracker);
+    return Child<nparent_t, tag::tracker> (m_tracker);
   }
 
   base_type<nparent_t, tracker, Child, RemoteTag> m_tracker;
 
 };
 
-template struct iparent_r<ichild_r, intrusive_reporter_tag>;
-template struct iparent_r<nchild_r, reporter_tag          >;
-template struct iparent_r<ichild_t, intrusive_tracker_tag >;
-template struct iparent_r<nchild_t, tracker_tag           >;
+template struct iparent_r<ichild_r, tag::intrusive_reporter>;
+template struct iparent_r<nchild_r, tag::reporter          >;
+template struct iparent_r<ichild_t, tag::intrusive_tracker >;
+template struct iparent_r<nchild_t, tag::tracker           >;
 
-template struct nparent_r<ichild_r, intrusive_reporter_tag>;
-template struct nparent_r<nchild_r, reporter_tag          >;
-template struct nparent_r<ichild_t, intrusive_tracker_tag >;
-template struct nparent_r<nchild_t, tracker_tag           >;
+template struct nparent_r<ichild_r, tag::intrusive_reporter>;
+template struct nparent_r<nchild_r, tag::reporter          >;
+template struct nparent_r<ichild_t, tag::intrusive_tracker >;
+template struct nparent_r<nchild_t, tag::tracker           >;
 
-template struct iparent_t<ichild_r, intrusive_reporter_tag>;
-template struct iparent_t<nchild_r, reporter_tag          >;
-template struct iparent_t<ichild_t, intrusive_tracker_tag >;
-template struct iparent_t<nchild_t, tracker_tag           >;
+template struct iparent_t<ichild_r, tag::intrusive_reporter>;
+template struct iparent_t<nchild_r, tag::reporter          >;
+template struct iparent_t<ichild_t, tag::intrusive_tracker >;
+template struct iparent_t<nchild_t, tag::tracker           >;
 
-template struct nparent_t<ichild_r, intrusive_reporter_tag>;
-template struct nparent_t<nchild_r, reporter_tag          >;
-template struct nparent_t<ichild_t, intrusive_tracker_tag >;
-template struct nparent_t<nchild_t, tracker_tag           >;
+template struct nparent_t<ichild_r, tag::intrusive_reporter>;
+template struct nparent_t<nchild_r, tag::reporter          >;
+template struct nparent_t<ichild_t, tag::intrusive_tracker >;
+template struct nparent_t<nchild_t, tag::tracker           >;
 
-template struct ichild_r<iparent_r<ichild_r, intrusive_reporter_tag>, intrusive_reporter_tag>;
-template struct ichild_r<nparent_r<ichild_r, intrusive_reporter_tag>, reporter_tag>;
-template struct ichild_r<iparent_t<ichild_r, intrusive_reporter_tag>, intrusive_tracker_tag>;
-template struct ichild_r<nparent_t<ichild_r, intrusive_reporter_tag>, tracker_tag>;
+template struct ichild_r<iparent_r<ichild_r, tag::intrusive_reporter>, tag::intrusive_reporter>;
+template struct ichild_r<nparent_r<ichild_r, tag::intrusive_reporter>, tag::reporter>;
+template struct ichild_r<iparent_t<ichild_r, tag::intrusive_reporter>, tag::intrusive_tracker>;
+template struct ichild_r<nparent_t<ichild_r, tag::intrusive_reporter>, tag::tracker>;
 
-template struct nchild_r<iparent_r<nchild_r, reporter_tag>, intrusive_reporter_tag>;
-template struct nchild_r<nparent_r<nchild_r, reporter_tag>, reporter_tag>;
-template struct nchild_r<iparent_t<nchild_r, reporter_tag>, intrusive_tracker_tag>;
-template struct nchild_r<nparent_t<nchild_r, reporter_tag>, tracker_tag>;
+template struct nchild_r<iparent_r<nchild_r, tag::reporter>, tag::intrusive_reporter>;
+template struct nchild_r<nparent_r<nchild_r, tag::reporter>, tag::reporter>;
+template struct nchild_r<iparent_t<nchild_r, tag::reporter>, tag::intrusive_tracker>;
+template struct nchild_r<nparent_t<nchild_r, tag::reporter>, tag::tracker>;
 
-template struct ichild_t<iparent_r<ichild_t, intrusive_tracker_tag>, intrusive_reporter_tag>;
-template struct ichild_t<nparent_r<ichild_t, intrusive_tracker_tag>, reporter_tag>;
-template struct ichild_t<iparent_t<ichild_t, intrusive_tracker_tag>, intrusive_tracker_tag>;
-template struct ichild_t<nparent_t<ichild_t, intrusive_tracker_tag>, tracker_tag>;
+template struct ichild_t<iparent_r<ichild_t, tag::intrusive_tracker>, tag::intrusive_reporter>;
+template struct ichild_t<nparent_r<ichild_t, tag::intrusive_tracker>, tag::reporter>;
+template struct ichild_t<iparent_t<ichild_t, tag::intrusive_tracker>, tag::intrusive_tracker>;
+template struct ichild_t<nparent_t<ichild_t, tag::intrusive_tracker>, tag::tracker>;
 
-template struct nchild_t<iparent_r<nchild_t, tracker_tag>, intrusive_reporter_tag>;
-template struct nchild_t<nparent_r<nchild_t, tracker_tag>, reporter_tag>;
-template struct nchild_t<iparent_t<nchild_t, tracker_tag>, intrusive_tracker_tag>;
-template struct nchild_t<nparent_t<nchild_t, tracker_tag>, tracker_tag>;
+template struct nchild_t<iparent_r<nchild_t, tag::tracker>, tag::intrusive_reporter>;
+template struct nchild_t<nparent_r<nchild_t, tag::tracker>, tag::reporter>;
+template struct nchild_t<iparent_t<nchild_t, tag::tracker>, tag::intrusive_tracker>;
+template struct nchild_t<nparent_t<nchild_t, tag::tracker>, tag::tracker>;
 
 
 class parent;
@@ -205,7 +205,7 @@ class child : public intrusive_reporter<child, parent>
 {
 public:
 
-  using base = trk::intrusive_reporter<child, parent>;
+  using base = gch::intrusive_reporter<child, parent>;
 
   child (void) = default;
 
@@ -213,12 +213,12 @@ public:
     : m_name (std::move (s))
   { }
 
-  child (typename base::remote_type& tkr)
-    : intrusive_reporter (trk::bind_with, tkr)
+  child (typename base::remote_interface_type& tkr)
+    : intrusive_reporter (gch::bind_with, tkr)
   { }
 
-  child (typename base::remote_type& tkr, std::string s)
-    : intrusive_reporter (trk::bind_with, tkr),
+  child (typename base::remote_interface_type& tkr, std::string s)
+    : intrusive_reporter (gch::bind_with, tkr),
       m_name (std::move (s))
   { }
 
@@ -270,7 +270,7 @@ class parent
 public:
 
   using reporter_type = child;
-  using tracker_type  = tracker<parent, child, intrusive_reporter_tag>;
+  using tracker_type  = tracker<parent, child, tag::intrusive_reporter>;
 
   parent (void)
     : m_children (*this)
@@ -340,7 +340,7 @@ public:
 
   using reporter_type = reporter<nonintruded_child_s, nonintruded_parent_s>;
 
-  nonintruded_child_s (reporter_type::remote_type& remote, std::string name)
+  nonintruded_child_s (reporter_type::remote_interface_type& remote, std::string name)
     : m_reporter (*this, remote),
       m_name (std::move (name))
   { }
@@ -400,7 +400,7 @@ public:
 
   using reporter_type = reporter<nonintruded_child, nonintruded_parent>;
 
-  nonintruded_child (reporter_type::remote_type& p)
+  nonintruded_child (reporter_type::remote_interface_type& p)
     : m_reporter (*this, p)
   { }
 
@@ -445,7 +445,7 @@ class nonintruded_parent_temp
 public:
 
   using reporter_type = typename T::reporter_type;
-  using tracker_type  = typename reporter_type::remote_type;
+  using tracker_type  = typename reporter_type::remote_interface_type;
 
   nonintruded_parent_temp (void)
     : m_children (*this)
