@@ -52,7 +52,7 @@ struct ichild_r : intrusive_reporter<ichild_r<Remote, RemoteTag>, Remote, Remote
   ichild_r (void) = default;
 
   explicit ichild_r (typename base::remote_interface_type& remote)
-    : base (gch::bind_with, remote)
+    : base (gch::tag::bind, remote)
   { }
 };
 
@@ -64,7 +64,7 @@ struct nchild_r
   nchild_r (void) = default;
 
   explicit nchild_r (typename reporter_type::remote_interface_type& remote)
-    : m_reporter (gch::bind_with, remote)
+    : m_reporter (gch::tag::bind, remote)
   { }
 
   reporter_type m_reporter;
@@ -214,11 +214,11 @@ public:
   { }
 
   child (typename base::remote_interface_type& tkr)
-    : intrusive_reporter (gch::bind_with, tkr)
+    : intrusive_reporter (gch::tag::bind, tkr)
   { }
 
   child (typename base::remote_interface_type& tkr, std::string s)
-    : intrusive_reporter (gch::bind_with, tkr),
+    : intrusive_reporter (gch::tag::bind, tkr),
       m_name (std::move (s))
   { }
 

@@ -23,9 +23,11 @@
 
 namespace gch
 {
-
-  struct bind_tag_t { };
-  inline constexpr bind_tag_t bind_with { };
+  
+  namespace tag
+  {
+    inline constexpr struct { } bind;
+  }
   
   template <typename ReporterCIter, typename Remote, typename RemoteParent>
   class reporter_iterator;
@@ -55,6 +57,7 @@ namespace gch
     {
       struct reporter_base;
       struct tracker_base;
+      using  gch::tag::bind;
     }
 
     template <typename ...Ts>
@@ -78,7 +81,7 @@ namespace gch
       reporter_base_common& operator= (reporter_base_common&& other) noexcept = default;
       ~reporter_base_common           (void)                                  = default;
       
-      explicit constexpr reporter_base_common (bind_tag_t, remote_base_type& remote) 
+      explicit constexpr reporter_base_common (decltype (tag::bind), remote_base_type& remote) 
         noexcept
         : m_remote_base (remote)
       { }
@@ -219,14 +222,14 @@ namespace gch
       // orphan functions, but we need to allow the derived types to quickly
       // destroy instances.
   
-      explicit reporter_base (bind_tag_t, remote_base_type& remote)
-        : base (bind_with, remote),
+      explicit reporter_base (decltype (tag::bind), remote_base_type& remote)
+        : base (tag::bind, remote),
           m_self_iter (remote.track (*this)),
           m_is_tracked (true)
       { }
   
       explicit reporter_base (remote_base_type& remote, self_iter it)
-        : base (bind_with, remote),
+        : base (tag::bind, remote),
           m_self_iter (it),
           m_is_tracked (true)
       { }
@@ -537,7 +540,7 @@ namespace gch
       base_iter track (remote_base_type& remote)
       {
         return m_reporters.emplace (m_reporters.end (),
-                                    bind_with, remote);
+                                    tag::bind, remote);
       }
   
       // safe, may throw
@@ -723,7 +726,7 @@ namespace gch
       template <typename ...Ts>
       using type = gch::tracker<Ts...>;
       using base = detail::tag::tracker_base;
-    };
+    };    
   } // tag
 
   // pretend like reporter_base doesn't exist
@@ -893,8 +896,8 @@ namespace gch
 //    reporter_common& operator= (reporter_common&&) noexcept = impl;
 //    ~reporter_common           (void)                       = impl;
   
-      constexpr explicit reporter_common (bind_tag_t, remote_interface_type& remote) noexcept
-        : base (bind_with, remote)
+      constexpr explicit reporter_common (decltype (tag::bind), remote_interface_type& remote) noexcept
+        : base (tag::bind, remote)
       { }
 
       reporter_common (reporter_common&& other) noexcept
@@ -1003,12 +1006,12 @@ namespace gch
       tracker_common& operator= (tracker_common&&) noexcept = default;
       ~tracker_common           (void)                      = default;
       
-      explicit tracker_common (bind_tag_t, remote_interface_type& remote)
+      explicit tracker_common (decltype (tag::bind), remote_interface_type& remote)
       { 
         base::base_bind (remote);
       }
 
-      explicit tracker_common (bind_tag_t,
+      explicit tracker_common (decltype (tag::bind),
         std::initializer_list<std::reference_wrapper<remote_interface_type>> init)
       {
         base::base_bind (init.begin (), init.end ());
@@ -1265,12 +1268,12 @@ namespace gch
 //  reporter& operator= (reporter&&) noexcept = impl;
     ~reporter           (void)                = default;
 
-    explicit reporter (bind_tag_t, remote_interface_type& remote)
-      : base (bind_with, remote)
+    explicit reporter (decltype (tag::bind), remote_interface_type& remote)
+      : base (tag::bind, remote)
     { }
 
     explicit reporter (local_parent_type& parent, remote_interface_type& remote)
-      : base (bind_with, remote),
+      : base (tag::bind, remote),
         m_parent (parent)
     { }
 
@@ -1376,13 +1379,13 @@ namespace gch
     { }
 
     explicit tracker (local_parent_type& parent, remote_interface_type& remote)
-      : base (bind_with, remote),
+      : base (tag::bind, remote),
         m_parent (parent)
     { }
 
     explicit tracker (local_parent_type& parent, 
       std::initializer_list<std::reference_wrapper<remote_interface_type>> init)
-      : base (bind_with, init),
+      : base (tag::bind, init),
         m_parent (parent)
     { }
     
