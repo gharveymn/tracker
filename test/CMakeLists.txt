@@ -1,3 +1,4 @@
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ADD_EXECUTABLE(test_tracker main.cpp)
 TARGET_LINK_LIBRARIES(test_tracker tracker)
 
@@ -16,6 +17,7 @@ if (UNIX)
 endif()
 
 SET_TARGET_PROPERTIES(test_tracker PROPERTIES
-                      CXX_STANDARD          11
+                      CXX_STANDARD          20
                       CXX_STANDARD_REQUIRED NO
-                      CXX_EXTENSIONS        NO)
+                      CXX_EXTENSIONS        NO
+                      COMPILE_OPTIONS       -fno-rtti)

@@ -438,12 +438,24 @@ namespace gch
         return *this;
       }
   
+      //! safe by default
       ~tracker_base (void) noexcept
       {
         reset ();
       }
   
-      void reset (void) noexcept
+      //! unsafe if needed
+      void wipe (void) noexcept
+      {
+        m_reporters.clear ();
+      }
+  
+      void reset (void) noexcept 
+      {
+        clear ();
+      }
+  
+      void clear (void) noexcept
       {
         if (! m_reporters.empty ())
           {
@@ -457,7 +469,7 @@ namespace gch
       {
         this->erase (it);
       }
-  
+      
       void swap (tracker_base& other) noexcept
       {
         // kinda expensive   
@@ -494,12 +506,6 @@ namespace gch
       void base_transfer_from (tracker_base& src) noexcept
       {
         return base_transfer_from (src, m_reporters.cend ());
-      }
-  
-      // unsafe!
-      void clear (void) noexcept
-      {
-        m_reporters.clear ();
       }
   
       GCH_NODISCARD base_iter   base_begin   (void)       noexcept { return m_reporters.begin (); }
@@ -553,14 +559,14 @@ namespace gch
                                    remote_base_type {});
       }
   
-      // safe
+      //! safe
       base_iter untrack (base_iter pos)
       {
         pos->orphan_remote ();
         return m_reporters.erase (pos);
       }
   
-      // safe
+      //! safe
       base_iter untrack (base_iter first, const base_iter last)
       {
         while (first != last)
@@ -698,59 +704,50 @@ namespace gch
   
   namespace tag
   {
-    struct intrusive
-    {
-      struct reporter;
-      struct tracker;
-    };
-  
-    struct nonintrusive
-    {
-      struct reporter;
-      struct tracker;
-    };
-    
-    using reporter = nonintrusive::reporter;
-    using tracker  = nonintrusive::tracker;
-    
+    struct intrusive;
+    struct nonintrusive;
+    struct reporter;
+    struct tracker;
   } // tag
   
   template <typename LocalParent, typename RemoteParent,
-            typename RemoteTag    = tag::nonintrusive::tracker,
+            typename RemoteTag    = tag::tracker,
             typename IntrusiveTag = tag::nonintrusive>
   class reporter;
   
   template <typename LocalParent, typename RemoteParent,
-            typename RemoteTag    = tag::nonintrusive::tracker,
+            typename RemoteTag    = tag::reporter,
             typename IntrusiveTag = tag::nonintrusive>
   class tracker;
   
-  struct tag::intrusive::reporter
-  {
-    template <typename ...Ts>
-    using type = gch::reporter<Ts..., tag::intrusive>;
-    using base = detail::tag::reporter_base;
-  };
-  
-  struct tag::intrusive::tracker
-  {
-    template <typename ...Ts>
-    using type = gch::tracker<Ts..., tag::intrusive>;
-    using base = detail::tag::tracker_base;
-  };
-  
-  struct tag::nonintrusive::reporter
+  struct tag::reporter
   {
     template <typename ...Ts>
     using type = gch::reporter<Ts..., tag::nonintrusive>;
     using base = detail::tag::reporter_base;
+    
+    struct intrusive
+    {
+      template <typename ...Ts>
+      using type = gch::reporter<Ts..., tag::intrusive>;
+      using base = detail::tag::reporter_base;
+    };
+    using nonintrusive = tag::reporter;
   };
   
-  struct tag::nonintrusive::tracker
+  struct tag::tracker
   {
     template <typename ...Ts>
     using type = gch::tracker<Ts..., tag::nonintrusive>;
     using base = detail::tag::tracker_base;
+    
+    struct intrusive
+    {
+      template <typename ...Ts>
+      using type = gch::tracker<Ts..., tag::intrusive>;
+      using base = detail::tag::tracker_base;
+    };
+    using nonintrusive = tag::tracker;
   };
 
   // pretend like reporter_base doesn't exist
@@ -870,6 +867,16 @@ namespace gch
   
   namespace detail
   {
+  
+    template <typename Compare, typename Head, typename ...Tail>
+    struct all_same
+      : std::integral_constant<bool, std::is_same<Compare, Head>::value
+        && all_same<Compare, Tail...>::value>
+    { };
+  
+    template <typename Compare, typename T>
+    struct all_same<Compare, T> : std::is_same<Compare, T>
+    { };
     
     template <typename LocalParent, typename RemoteParent,
               typename LocalTag, typename RemoteTag>
@@ -985,16 +992,6 @@ namespace gch
       
       using base               = tracker_base<typename RemoteTag::base>;
       using base_citer         = typename base::base_citer;
-
-      template <typename Compare, typename Head, typename ...Tail>
-      struct all_same
-        : std::integral_constant<bool, std::is_same<Compare, Head>::value
-                                       && all_same<Compare, Tail...>::value>
-      { };
-
-      template <typename Compare, typename T>
-      struct all_same<Compare, T> : std::is_same<Compare, T>
-      { };
       
     public:
       using remote_interface_type = typename RemoteTag::template type<RemoteParent, 
@@ -1010,6 +1007,7 @@ namespace gch
 
       using base::base;
       using base::clear;
+      using base::wipe;
       using base::num_reporters;
       
       tracker_common            (void)                      = default;
@@ -1076,7 +1074,7 @@ namespace gch
       }
 
       template <typename ...Args>
-      typename std::enable_if<all_same<remote_interface_type, Args...>::value>::type
+      typename std::enable_if<detail::all_same<remote_interface_type, Args...>::value>::type
       bind (remote_interface_type& r, Args&... args)
       {
         base::base_bind (r);
@@ -1097,13 +1095,13 @@ namespace gch
   template <typename LocalParent, typename RemoteParent, typename RemoteTag>
   class reporter<LocalParent, RemoteParent, RemoteTag, tag::intrusive>
     : private detail::reporter_common<LocalParent, RemoteParent, 
-                                      tag::intrusive::reporter, RemoteTag>
+                                      tag::reporter::intrusive, RemoteTag>
   {
     
     using base = detail::reporter_common<LocalParent, RemoteParent, 
-                                         tag::intrusive::reporter, RemoteTag>;
+                                         tag::reporter::intrusive, RemoteTag>;
   public:
-    using local_interface_tag   = tag::intrusive::reporter;
+    using local_interface_tag   = tag::reporter::intrusive;
     using remote_interface_tag  = RemoteTag;
   
     using local_interface_type  = reporter;
@@ -1163,12 +1161,12 @@ namespace gch
   template <typename LocalParent, typename RemoteParent, typename RemoteTag>
   class tracker<LocalParent, RemoteParent, RemoteTag, tag::intrusive>
     : private detail::tracker_common<LocalParent, RemoteParent, 
-                                     tag::intrusive::tracker, RemoteTag>
+                                     tag::tracker::intrusive, RemoteTag>
   {
     using base = detail::tracker_common<LocalParent, RemoteParent, 
-                                        tag::intrusive::tracker, RemoteTag>;
+                                        tag::tracker::intrusive, RemoteTag>;
   public:
-    using local_interface_tag   = tag::intrusive::tracker;
+    using local_interface_tag   = tag::tracker::intrusive;
     using remote_interface_tag  = RemoteTag;
   
     using local_interface_type  = tracker;
@@ -1210,7 +1208,7 @@ namespace gch
     using base::bind;
     
     // from tracker_base
-    using base::clear;
+    using base::wipe;
     using base::num_reporters;
     
     tracker            (void)               = default;
@@ -1248,11 +1246,12 @@ namespace gch
   template <typename LocalParent, typename RemoteParent, typename RemoteTag>
   class reporter<LocalParent, RemoteParent, RemoteTag, tag::nonintrusive>
     : public detail::reporter_common<LocalParent, RemoteParent, 
-                                     tag::reporter, RemoteTag>
+                                     tag::reporter::nonintrusive, RemoteTag>
   {
-    using base = detail::reporter_common<LocalParent, RemoteParent, tag::reporter, RemoteTag>;
+    using base = detail::reporter_common<LocalParent, RemoteParent, 
+                                         tag::reporter::nonintrusive, RemoteTag>;
   public:
-    using local_interface_tag   = tag::reporter;
+    using local_interface_tag   = tag::reporter::nonintrusive;
     using remote_interface_tag  = RemoteTag;
   
     using local_interface_type  = reporter;
@@ -1345,12 +1344,12 @@ namespace gch
   template <typename LocalParent, typename RemoteParent, typename RemoteTag>
   class tracker<LocalParent, RemoteParent, RemoteTag, tag::nonintrusive>
     : public detail::tracker_common<LocalParent, RemoteParent,
-                                    tag::nonintrusive::tracker, RemoteTag>
+                                    tag::tracker::nonintrusive, RemoteTag>
   {
     using base = detail::tracker_common<LocalParent, RemoteParent,
-                                        tag::nonintrusive::tracker, RemoteTag>;
+                                        tag::tracker::nonintrusive, RemoteTag>;
   public:
-    using local_interface_tag   = tag::nonintrusive::tracker;
+    using local_interface_tag   = tag::tracker::nonintrusive;
     using remote_interface_tag  = RemoteTag;
   
     using local_interface_type  = tracker;
@@ -1447,8 +1446,16 @@ namespace gch
     
   };
   
+  //! standalone tracker (no parent)
+  template <typename RemoteParent, typename RemoteTag>
+  class tracker<tag::tracker, RemoteParent, RemoteTag, tag::nonintrusive>
+    : public tracker<tracker<tag::tracker, RemoteParent, RemoteTag, tag::nonintrusive>, 
+                     RemoteParent, RemoteTag, tag::intrusive>
+  { };
+  
   template <typename LocalParent, typename RemoteParent = LocalParent>
-  using multireporter = tracker<LocalParent, RemoteParent, tag::nonintrusive::tracker>;
+  using multireporter = tracker<LocalParent, RemoteParent, 
+                                tag::tracker::nonintrusive, tag::nonintrusive>;
 
   template <typename ...Ts, typename ...RemoteTypes>
   void bind (tracker<Ts...>& l, RemoteTypes&... Remotes)
