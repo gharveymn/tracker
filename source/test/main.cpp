@@ -263,7 +263,7 @@ public:
 
   void transfer_from (parent& other)
   {
-    m_children.transfer_from (other.m_children);
+    m_children.transfer_bindings (other.m_children);
   }
 
   template <typename ...Args>
@@ -332,7 +332,7 @@ public:
   {
     if (&other != this)
       {
-        m_reporter = other.m_reporter;
+        m_reporter.copy_binding (other.m_reporter);
         m_name = other.m_name;
       }
     return *this;
@@ -340,7 +340,7 @@ public:
 
   nonintruded_child_s& operator= (nonintruded_child_s&& other) noexcept
   {
-    m_reporter = std::move (other.m_reporter);
+    m_reporter.transfer_binding (other.m_reporter);
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -389,7 +389,7 @@ public:
 
   nonintruded_child& operator= (nonintruded_child&& other) noexcept
   {
-    m_reporter = std::move (other.m_reporter);
+    m_reporter.transfer_binding (other.m_reporter);
     return *this;
   }
 
@@ -438,7 +438,7 @@ public:
 
   void transfer_from (nonintruded_parent_temp& other)
   {
-    m_children.transfer_from (other.m_children);
+    m_children.transfer_bindings (other.m_children);
   }
 
   template <typename ...Args>
@@ -527,7 +527,7 @@ public:
 
   self_parent& operator= (self_parent&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.transfer_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -570,7 +570,7 @@ public:
 
   anon_self_parent& operator= (anon_self_parent&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.transfer_bindings (std::move (other.m_tracker));
     return *this;
   }
   
@@ -613,7 +613,7 @@ public:
 
   anon1& operator= (anon1&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.transfer_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -658,7 +658,7 @@ public:
 
   anon2& operator= (anon2&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.transfer_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -709,7 +709,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker = other.m_tracker;
+        m_tracker.copy_bindings (other.m_tracker);
         m_name = other.m_name;
       }
     return *this;
@@ -717,7 +717,7 @@ public:
 
   named1& operator= (named1&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.transfer_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -775,7 +775,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker = other.m_tracker;
+        m_tracker.copy_bindings (other.m_tracker);
         m_name = other.m_name;
       }
     return *this;
@@ -783,7 +783,7 @@ public:
   
   named2& operator= (named2&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.transfer_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }

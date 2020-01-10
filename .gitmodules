@@ -4,3 +4,6 @@
 [submodule "external/optional_ref"]
 	path = external/optional_ref
 	url = git@github.com:gharveymn/optional_ref.git
+[submodule "external/create-package"]
+	path = external/create-package
+	url = git@github.com:gharveymn/create-package.git
