@@ -1,11 +1,6 @@
 /*
 !.gitignore
 !.gitmodules
-!LICENSE
-!README.md
 !CMakeLists.txt
-!/include
+!/doc
 !/source
-!/src
-!/test
-!/cmake
