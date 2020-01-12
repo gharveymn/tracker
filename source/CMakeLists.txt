@@ -7,13 +7,10 @@ CREATE_PACKAGE(AUTHOR       gharveymn
                DEPENDENCIES optional_ref plf_list
                HEADERS      tracker.hpp)
 
-# Options
-IF(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-  OPTION(TRACKER_BUILD_TESTS "Set to ON to build tests" ON)
+IF(TRACKER_BUILD_TESTS)
+  MESSAGE(STATUS "Testing is enabled.")
+  ADD_SUBDIRECTORY(test)
 ELSE()
-  OPTION(TRACKER_BUILD_TESTS "Set to ON to build tests" OFF)
+  MESSAGE(STATUS "Testing is disabled.")
 ENDIF()
 
-IF(TRACKER_BUILD_TESTS)
-  ADD_SUBDIRECTORY(test)
-ENDIF()
