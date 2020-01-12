@@ -49,7 +49,7 @@ namespace gch
     struct nonintrusive;
     struct reporter;
     struct tracker;
-    GCH_INLINE_VARS constexpr struct bind_t { } bind;
+    GCH_INLINE_VARS constexpr struct bind_t { bind_t (void) = default; } bind;
   }
   
   namespace detail::tag
@@ -298,6 +298,7 @@ namespace gch
     private:
       
       using self_iter = typename list<remote_reporter_type>::iterator;
+      using self_citer = typename list<remote_reporter_type>::const_iterator;
   
     public:
 
@@ -325,7 +326,7 @@ namespace gch
       {
         base::track (other.get_remote_base ());
         if (other.is_tracked ())
-          set_self_iter (other.get_remote_base ().track (*this));
+          m_self_iter = other.get_remote_base ().track (*this);
       }
   
       reporter_base (reporter_base&& other) noexcept
@@ -373,7 +374,7 @@ namespace gch
       GCH_CPP14_CONSTEXPR void reset_remote_tracking (void) noexcept
       {
         if (base::is_tracked ())
-          base::get_remote_base ().erase (get_self_iter ());
+          base::get_remote_base ().erase (m_self_iter);
       }
   
       GCH_NODISCARD
@@ -381,7 +382,7 @@ namespace gch
       {
         if (! base::is_tracked ())
           return 0;
-        return base::get_remote_base ().base_get_offset (get_self_iter ());
+        return base::get_remote_base ().base_get_offset (m_self_iter);
       }
   
       reporter_base& rebind (remote_base_type& new_remote)
@@ -402,7 +403,7 @@ namespace gch
             // we already point to new_remote, but we aren't tracked
             // note that that the above condition implies that has_remote () == true
             // since &new_remote cannot be nullptr.
-            set_self_iter (new_remote.track (*this));
+            m_self_iter = new_remote.track (*this);
           }
         return *this;
       }
@@ -420,7 +421,7 @@ namespace gch
       constexpr remote_reporter_type& 
       get_remote_reporter (void) const noexcept
       {
-        return *get_self_iter ();
+        return *m_self_iter;
       }
   
   //  protected:
@@ -428,22 +429,11 @@ namespace gch
       reporter_base& set (remote_base_type& remote, self_iter it) noexcept
       {
         base::track (remote);
-        set_self_iter (it);
+        m_self_iter = it;
         return *this;
       }
   
     private:
-  
-      GCH_CPP14_CONSTEXPR void set_self_iter (self_iter it) noexcept 
-      {
-        m_self_iter = it;
-      }
-
-      GCH_NODISCARD
-      constexpr self_iter get_self_iter (void) const noexcept
-      {
-        return m_self_iter;
-      }
   
       self_iter m_self_iter;
   
@@ -510,11 +500,11 @@ namespace gch
       void clear (void) noexcept
       {
         if (! m_rptrs.empty ())
-          {
-            for (auto& p : m_rptrs)
-              p.reset_remote_tracking ();
-            m_rptrs.clear ();
-          }
+        {
+          for (auto& p : m_rptrs)
+            p.reset_remote_tracking ();
+          m_rptrs.clear ();
+        }
       }
       
       void swap (tracker_base& other) noexcept
@@ -534,7 +524,7 @@ namespace gch
       rptr_iter base_transfer_bindings (tracker_base& src, rptr_citer pos) noexcept
       {
         rptr_iter pivot = src.rptrs_begin ();
-        repoint_reporters (src.rptrs_begin(), src.rptrs_end ());
+        repoint_reporters (src.rptrs_begin (), src.rptrs_end ());
         m_rptrs.splice (pos, src.m_rptrs);
         return pivot;
       }
@@ -606,7 +596,8 @@ namespace gch
       }
   
       GCH_NODISCARD
-      std::size_t base_get_offset (rptr_citer pos) const noexcept
+      typename std::iterator_traits<rptr_citer>::difference_type 
+      base_get_offset (rptr_citer pos) const noexcept
       {
         return std::distance (rptrs_cbegin (), pos);
       }
@@ -623,7 +614,7 @@ namespace gch
       template <typename Tag = remote_base_tag, tag::enable_if_tracker_t<Tag, bool> = true>
       rptr_iter base_bind (remote_base_type& remote)
       {
-        rptr_iter it = this->track ();
+        const rptr_iter it = this->track ();
         try
         {
           it->set (remote, remote.track (*this, it));
@@ -795,7 +786,7 @@ namespace gch
       if (&other == this)
         return *this;
       
-      rptr_iter pivot = base_bind (other.rptrs_begin (), other.rptrs_end ());
+      const rptr_iter pivot = base_bind (other.rptrs_begin (), other.rptrs_end ());
       base_debind (rptrs_begin (), pivot);
       return *this;
     }
@@ -856,12 +847,12 @@ namespace gch
 
     constexpr remote_type& operator* (void) const noexcept
     {
-      return get_remote_parent();
+      return get_remote ();
     }
 
     constexpr remote_type * operator-> (void) const noexcept
     {
-      return &get_remote_parent ();
+      return &get_remote ();
     }
 
     remote_iterator& operator++ (void) noexcept
@@ -914,7 +905,7 @@ namespace gch
       return m_iter;
     }
 
-    constexpr remote_type& get_remote_parent (void) const noexcept
+    constexpr remote_type& get_remote (void) const noexcept
     {
       return get_remote_interface ().get_parent ();
     }
@@ -1015,15 +1006,21 @@ namespace gch
       {
         return static_cast<local_interface_type&> (base::rebind (other.get_remote_interface ()));
       }
-  
-      GCH_NODISCARD 
-      constexpr bool has_remote_parent (void) const noexcept
+      
+      GCH_NODISCARD
+      constexpr bool has_remote (void) const noexcept 
       {
-        return base::has_remote () && get_remote_interface ().has_parent ();
+        return base::is_tracked ();
       }
       
       GCH_NODISCARD 
-      constexpr remote_type& get_remote_parent (void) const noexcept
+      GCH_CPP14_CONSTEXPR remote_type& get_remote (void) noexcept
+      {
+        return get_remote_interface ().get_parent ();
+      }
+  
+      GCH_NODISCARD
+      constexpr const remote_type& get_remote (void) const noexcept
       {
         return get_remote_interface ().get_parent ();
       }
@@ -1131,19 +1128,19 @@ namespace gch
       GCH_NODISCARD citer  end           (void) const noexcept { return base::rptrs_end ();     }
       GCH_NODISCARD citer  cend          (void) const noexcept { return base::rptrs_cend ();    }
       
-      GCH_NODISCARD riter  rbegin        (void)       noexcept { return base::rptrs_rbegin ();  }
-      GCH_NODISCARD criter rbegin        (void) const noexcept { return base::rptrs_rbegin ();  }
-      GCH_NODISCARD criter crbegin       (void) const noexcept { return base::rptrs_crbegin (); }
+      GCH_NODISCARD riter  rbegin        (void)       noexcept { return riter (end ());         }
+      GCH_NODISCARD criter rbegin        (void) const noexcept { return riter (end ());         }
+      GCH_NODISCARD criter crbegin       (void) const noexcept { return criter (cend ());       }
       
-      GCH_NODISCARD riter  rend          (void)       noexcept { return base::rptrs_rend ();    }
-      GCH_NODISCARD criter rend          (void) const noexcept { return base::rptrs_rend ();    }
-      GCH_NODISCARD criter crend         (void) const noexcept { return base::rptrs_crend ();   }
+      GCH_NODISCARD riter  rend          (void)       noexcept { return riter (begin ());       }
+      GCH_NODISCARD criter rend          (void) const noexcept { return riter (begin ());       }
+      GCH_NODISCARD criter crend         (void) const noexcept { return criter (cbegin ());     }
       
-      GCH_NODISCARD ref    front         (void)                { return *begin ();             }
-      GCH_NODISCARD cref   front         (void) const          { return *begin ();             }
+      GCH_NODISCARD ref    front         (void)                { return *begin ();              }
+      GCH_NODISCARD cref   front         (void) const          { return *begin ();              }
       
-      GCH_NODISCARD ref    back          (void)                { return *--end ();             }
-      GCH_NODISCARD cref   back          (void) const          { return *--end ();             }
+      GCH_NODISCARD ref    back          (void)                { return *--end ();              }
+      GCH_NODISCARD cref   back          (void) const          { return *--end ();              }
   
       GCH_NODISCARD bool   has_reporters (void) const noexcept { return ! base::rptrs_empty (); }
   
@@ -1184,7 +1181,7 @@ namespace gch
       template <typename Tag = remote_tag, tag::enable_if_tracker_t<Tag, bool> = true>
       iter bind (citer first, citer last)
       {
-        return base::template base_bind<rptr_iter> (first, last);
+        return base::template base_bind (rptr_iter (first), rptr_iter (last));
       }
   
       //! disabled for reporters
@@ -1232,12 +1229,6 @@ namespace gch
       intrusive_common& operator= (const intrusive_common&)     = default;
       intrusive_common& operator= (intrusive_common&&) noexcept = default;
       ~intrusive_common           (void)                        = default;
-      
-      GCH_NODISCARD
-      constexpr bool has_parent (void) const noexcept
-      {
-        return true;
-      }
   
       GCH_NODISCARD
       GCH_CPP14_CONSTEXPR derived_type& get_parent (void) noexcept
@@ -1277,12 +1268,6 @@ namespace gch
       constexpr nonintrusive_common (parent_type& parent)
         : m_parent (parent)
       { }
-      
-      GCH_NODISCARD
-      constexpr bool has_parent (void) const noexcept
-      {
-        return true;
-      }
   
       GCH_NODISCARD
       GCH_CPP14_CONSTEXPR parent_type& get_parent (void) noexcept
@@ -1340,8 +1325,8 @@ namespace gch
     using base::base;
     using base::swap;
     using base::get_position;
-    using base::has_remote_parent;
-    using base::get_remote_parent;
+    using base::has_remote;
+    using base::get_remote;
   
     reporter            (void)                = default;
     reporter            (const reporter&)     = default;
