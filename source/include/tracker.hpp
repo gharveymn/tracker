@@ -11,6 +11,8 @@
 #if ! defined (tracker_hpp)
 #define tracker_hpp 1
 
+#include "plf_colony.h"
+
 #include <algorithm>
 #include <plf_list.h>
 #include <iterator>
@@ -136,7 +138,7 @@ namespace gch
     }
   
     template <typename ...Ts>
-    using list = plf::list<Ts...>;
+    using list = plf::colony<Ts...>;
   
     template <typename LocalBaseTag, typename RemoteBaseTag>
     class reporter_base;
@@ -296,9 +298,6 @@ namespace gch
     using base = reporter_base_common<reporter_base, remote_base_type>;
 
     private:
-      
-      using self_iter = typename list<remote_reporter_type>::iterator;
-      using self_citer = typename list<remote_reporter_type>::const_iterator;
   
     public:
 
@@ -314,27 +313,27 @@ namespace gch
   
       explicit reporter_base (gch::tag::bind_t, remote_base_type& remote)
         : base (gch::tag::bind, remote),
-          m_self_iter (remote.track (*this))
+          m_remote_reporter (*remote.track (*this))
       { }
   
-      explicit reporter_base (remote_base_type& remote, self_iter it)
+      explicit reporter_base (remote_base_type& remote, remote_reporter_type& it)
         : base (gch::tag::bind, remote),
-          m_self_iter (std::move (it))
+          m_remote_reporter (it)
       { }
   
       reporter_base (const reporter_base& other)
       {
         base::track (other.get_remote_base ());
         if (other.is_tracked ())
-          m_self_iter = other.get_remote_base ().track (*this);
+          m_remote_reporter = *other.get_remote_base ().track (*this);
       }
   
       reporter_base (reporter_base&& other) noexcept
         : base (std::move (other)),
-          m_self_iter (other.m_self_iter)
+          m_remote_reporter (other.m_remote_reporter)
       {
         if (base::is_tracked ())
-          m_self_iter->track (*this);
+          m_remote_reporter->track (*this);
         other.reset ();
       }
   
@@ -358,8 +357,8 @@ namespace gch
             if (other.is_tracked ())
             {
               base::operator= (std::move (other));
-              m_self_iter = other.m_self_iter;
-              m_self_iter->track (*this);
+              m_remote_reporter = other.m_remote_reporter;
+              m_remote_reporter->track (*this);
             }
             else
             {
@@ -374,7 +373,7 @@ namespace gch
       GCH_CPP14_CONSTEXPR void reset_remote_tracking (void) noexcept
       {
         if (base::is_tracked ())
-          base::get_remote_base ().erase (m_self_iter);
+          base::get_remote_base ().erase (*m_remote_reporter);
       }
   
       GCH_NODISCARD
@@ -382,7 +381,7 @@ namespace gch
       {
         if (! base::is_tracked ())
           return 0;
-        return base::get_remote_base ().base_get_offset (m_self_iter);
+        return base::get_remote_base ().base_get_offset (*m_remote_reporter);
       }
   
       reporter_base& rebind (remote_base_type& new_remote)
@@ -392,7 +391,7 @@ namespace gch
         if (! base::is_tracking (new_remote))
           {
             // might fail
-            self_iter new_iter = new_remote.track (*this);
+            remote_reporter_type& new_iter = *new_remote.track (*this);
   
             // if we didn't fail the rest is noexcept
             reset_remote_tracking ();
@@ -403,7 +402,7 @@ namespace gch
             // we already point to new_remote, but we aren't tracked
             // note that that the above condition implies that has_remote () == true
             // since &new_remote cannot be nullptr.
-            m_self_iter = new_remote.track (*this);
+            m_remote_reporter = *new_remote.track (*this);
           }
         return *this;
       }
@@ -414,28 +413,28 @@ namespace gch
         base::swap (other);
         
         using std::swap;
-        swap (this->m_self_iter, other.m_self_iter);
+        swap (this->m_remote_reporter, other.m_remote_reporter);
       }
   
       GCH_NODISCARD
       constexpr remote_reporter_type& 
       get_remote_reporter (void) const noexcept
       {
-        return *m_self_iter;
+        return *m_remote_reporter;
       }
   
   //  protected:
   
-      reporter_base& set (remote_base_type& remote, self_iter it) noexcept
+      reporter_base& set (remote_base_type& remote, remote_reporter_type& ptr) noexcept
       {
         base::track (remote);
-        m_self_iter = it;
+        m_remote_reporter.emplace (ptr);
         return *this;
       }
   
     private:
-  
-      self_iter m_self_iter;
+      
+      gch::optional_ref<remote_reporter_type> m_remote_reporter;
   
     };
   
@@ -525,7 +524,7 @@ namespace gch
       {
         rptr_iter pivot = src.rptrs_begin ();
         repoint_reporters (src.rptrs_begin (), src.rptrs_end ());
-        m_rptrs.splice (pos, src.m_rptrs);
+        m_rptrs.splice (src.m_rptrs);
         return pivot;
       }
   
@@ -567,32 +566,42 @@ namespace gch
       // safe, may throw
       rptr_iter track (void)
       {
-        return m_rptrs.emplace (m_rptrs.end ());
+        return m_rptrs.emplace ();
       }
   
       // safe, may throw
       rptr_iter track (remote_base_type& remote)
       {
-        return m_rptrs.emplace (m_rptrs.end (),
-                                gch::tag::bind, remote);
+        return m_rptrs.emplace (gch::tag::bind, remote);
       }
   
       // safe, may throw
-      rptr_iter track (remote_base_type& remote, remote_rptr_iter it)
+      rptr_iter track (remote_base_type& remote, remote_reporter_type& it)
       {
-        return m_rptrs.emplace (m_rptrs.end (), remote, it);
+        return m_rptrs.emplace (remote, it);
       }
       
       rptr_iter append_uninit (std::size_t num)
       {
-        return m_rptrs.insert (m_rptrs.cend (), num,
-                               remote_base_type {});
+        return m_rptrs.insert (num, remote_base_type {});
       }
   
       // unsafe!
+      rptr_iter erase (reporter_type& cit) noexcept
+      {
+        return m_rptrs.erase (m_rptrs.get_iterator_from_pointer (&cit));
+      }
+  
       rptr_iter erase (rptr_citer cit) noexcept
       {
         return m_rptrs.erase (cit);
+      }
+  
+      GCH_NODISCARD
+      typename std::iterator_traits<rptr_citer>::difference_type
+      base_get_offset (reporter_type& pos) const noexcept
+      {
+        return std::distance (rptrs_cbegin (), rptr_citer (m_rptrs.get_iterator_from_pointer (&pos)));
       }
   
       GCH_NODISCARD
@@ -617,7 +626,7 @@ namespace gch
         const rptr_iter it = this->track ();
         try
         {
-          it->set (remote, remote.track (*this, it));
+          it->set (remote, *remote.track (*this, *it));
         }
         catch (...)
         {
