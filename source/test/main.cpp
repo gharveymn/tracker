@@ -1,4 +1,4 @@
-#include <tracker.hpp>
+#include "tracker.hpp"
 
 #include <iostream>
 #include <memory>
@@ -12,7 +12,11 @@
 
 using namespace gch;
 
+#ifndef NDEBUG
 constexpr std::size_t multiplier = 1;
+#else
+constexpr std::size_t multiplier = 100;
+#endif
 
 template <typename Remote, typename RemoteTag>
 struct ichild_r : reporter<ichild_r<Remote, RemoteTag>, Remote, RemoteTag, tag::intrusive>
@@ -52,7 +56,7 @@ struct ichild_t : tracker<ichild_t<Remote, RemoteTag>, Remote, RemoteTag, tag::i
 
   ichild_t (void) = default;
 
-  explicit ichild_t (typename base::remote_interface_type& remote)
+  explicit ichild_t (typename base::remote_interface_type&)
   { }
 
 };
@@ -64,7 +68,7 @@ struct nchild_t
 
   nchild_t (void) = default;
 
-  explicit nchild_t (typename tracker_type::remote_interface_type& remote)
+  explicit nchild_t (typename tracker_type::remote_interface_type&)
     : m_tracker (*this)
   { }
 
@@ -413,7 +417,7 @@ public:
     return *this;
   }
 
-  friend std::ostream& operator<< (std::ostream& o, const nonintruded_child& c)
+  friend std::ostream& operator<< (std::ostream& o, const nonintruded_child&)
   {
     return o;
   }
@@ -1018,7 +1022,7 @@ std::chrono::duration<double> perf_access (void)
     {
       for (const Child& r : p)
         {
-          std::size_t x = r.f (dist (gen));
+          static_cast<void> (r.f (dist (gen)));
         }
     }
 
