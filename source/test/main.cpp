@@ -34,7 +34,7 @@ struct nchild_r
   nchild_r (void) = default;
 
   explicit nchild_r (typename reporter_type::remote_interface_type& remote)
-    : m_reporter (tag::bind, remote)
+    : m_reporter (*this, remote)
   { }
   
   nchild_r (nchild_r&& other) noexcept
@@ -65,6 +65,7 @@ struct nchild_t
   nchild_t (void) = default;
 
   explicit nchild_t (typename tracker_type::remote_interface_type& remote)
+    : m_tracker (*this)
   { }
 
   tracker_type m_tracker;
@@ -206,20 +207,20 @@ public:
       m_name (std::move (o.m_name))
   { }
   
-  child& operator= (const child& o)
+  child& operator= (const child& other)
   {
-    if (&o != this)
+    if (&other != this)
       {
-        reporter::operator=(o);
-        m_name = o.m_name;
+        reporter::operator= (other);
+        m_name = other.m_name;
       }
     return *this;
   }
 
-  child& operator= (child&& o) noexcept
+  child& operator= (child&& other) noexcept
   {
-    m_name = std::move (o.m_name);
-    reporter::operator=(std::move (o));
+    m_name = std::move (other.m_name);
+    reporter::operator= (std::move (other));
     return *this;
   }
 
@@ -298,6 +299,24 @@ void child::rebind (parent& p)
 {
   base::rebind (p.m_children);
 }
+
+template class gch::tracker<int, int, tag::reporter::intrusive, tag::intrusive>;
+template class gch::tracker<int, int, tag::reporter           , tag::intrusive>;
+template class gch::tracker<int, int, tag::tracker::intrusive , tag::intrusive>;
+template class gch::tracker<int, int, tag::tracker            , tag::intrusive>;
+template class gch::tracker<int, int, tag::reporter::intrusive, tag::nonintrusive>;
+template class gch::tracker<int, int, tag::reporter           , tag::nonintrusive>;
+template class gch::tracker<int, int, tag::tracker::intrusive , tag::nonintrusive>;
+template class gch::tracker<int, int, tag::tracker            , tag::nonintrusive>;
+
+template class gch::reporter<int, int, tag::reporter::intrusive, tag::intrusive>;
+template class gch::reporter<int, int, tag::reporter           , tag::intrusive>;
+template class gch::reporter<int, int, tag::tracker::intrusive , tag::intrusive>;
+template class gch::reporter<int, int, tag::tracker            , tag::intrusive>;
+template class gch::reporter<int, int, tag::reporter::intrusive, tag::nonintrusive>;
+template class gch::reporter<int, int, tag::reporter           , tag::nonintrusive>;
+template class gch::reporter<int, int, tag::tracker::intrusive , tag::nonintrusive>;
+template class gch::reporter<int, int, tag::tracker            , tag::nonintrusive>;
 
 class nonintruded_child_s;
 class nonintruded_child;
@@ -729,11 +748,27 @@ public:
   friend inline void
   bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
         std::initializer_list<std::reference_wrapper<named2>> n2s);
+  
+  void bind (named2& n2);
+  
+  template <typename ...Args>
+  void bind (named2& n2, Args&... args)
+  {
+    bind (args...);
+    bind (n2);
+  }
 
   void clear_tracker (void) noexcept
   {
     return m_tracker.wipe ();
   }
+  
+  multireporter<named1, named2>& get_tracker (void)
+  {
+    return m_tracker;
+  }
+  
+  std::size_t num_reporters (void) { return m_tracker.num_reporters (); }
   
   const std::string& get_name (void) const noexcept { return m_name; }
 
@@ -800,6 +835,25 @@ public:
   {
     return m_tracker.wipe ();
   }
+  
+  multireporter<named2, named1>& get_tracker (void)
+  {
+    return m_tracker;
+  }
+  
+  void bind (named1& n1)
+  {
+    m_tracker.bind (n1.get_tracker ());
+  }
+  
+  template <typename ...Args>
+  void bind (named1& n1, Args&... args)
+  {
+    bind (args...);
+    bind (n1);
+  }
+  
+  std::size_t num_reporters (void) { return m_tracker.num_reporters (); }
 
   const std::string& get_name (void) const noexcept { return m_name; }
 
@@ -818,6 +872,21 @@ private:
   std::string m_name;
 
 };
+
+void named1::bind (named2& n2)
+{
+  m_tracker.bind (n2.get_tracker ());
+}
+
+void bind (named2& n2, named1& n1)
+{
+  n2.bind (n1);
+}
+
+void bind (named1& n1, named2& n2)
+{
+  n1.bind (n2);
+}
 
 inline void 
 bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
@@ -1180,10 +1249,13 @@ std::chrono::duration<double> test_binding (void)
   using time = clock::time_point;
   time t1 = clock::now ();
 
-  using mr1 = multireporter<named1, named2>;
-  using mr2 = multireporter<named2, named1>;
-  std::unique_ptr<multireporter<named1, named2>> n1_1 (new mr1), n1_2 (new mr1), n1_3 (new mr1);
-  std::unique_ptr<multireporter<named2, named1>> n2_1 (new mr2), n2_2 (new mr2), n2_3 (new mr2);
+  std::unique_ptr<named1> n1_1 (new named1 ("n1_1")), 
+                          n1_2 (new named1 ("n1_2")), 
+                          n1_3 (new named1 ("n1_3"));
+  
+  std::unique_ptr<named2> n2_1 (new named2 ("n2_1")),
+                          n2_2 (new named2 ("n2_2")),
+                          n2_3 (new named2 ("n2_3"));
 
   n1_1->bind (*n2_1, *n2_2, *n2_3);
   bind (*n1_1, *n2_1);
@@ -1370,6 +1442,8 @@ int main()
   std::cout << "nreporter : nreporter :" << sizeof (reporter<child, parent, tag::reporter         , tag::nonintrusive>) << std::endl;
   std::cout << "nreporter : itracker  :" << sizeof (reporter<child, parent, tag::tracker::intrusive , tag::nonintrusive>) << std::endl;
   std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, parent, tag::tracker          , tag::nonintrusive>) << std::endl;
-
+  
+  std::cout << "iter  :" << sizeof (tracker<child, parent, tag::reporter::intrusive, tag::nonintrusive>::iter) << std::endl;
+  
   return 0;
 }

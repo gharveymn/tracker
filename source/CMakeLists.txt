@@ -14,7 +14,6 @@ ELSE()
   OPTION(TRACKER_BUILD_TESTS "Set to ON to build tests" OFF)
 ENDIF()
 
-# Only include tests if we are at the top level
 IF(TRACKER_BUILD_TESTS)
   ADD_SUBDIRECTORY(test)
 ENDIF()
