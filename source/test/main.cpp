@@ -1,3 +1,5 @@
+#include <tracker.hpp>
+
 #include <iostream>
 #include <memory>
 #include <unordered_set>
@@ -6,8 +8,7 @@
 #include <random>
 #include <list>
 #include <sstream>
-
-#include <tracker.hpp>
+#include <plf_list.h>
 
 using namespace gch;
 
@@ -130,24 +131,24 @@ struct nparent_t
 
 };
 
-template struct iparent_r<ichild_r, tag::reporter::intrusive>;
+template struct iparent_r<ichild_r, tag::reporter::intrusive   >;
 template struct iparent_r<nchild_r, tag::reporter              >;
-template struct iparent_r<ichild_t, tag::tracker::intrusive >;
+template struct iparent_r<ichild_t, tag::tracker::intrusive    >;
 template struct iparent_r<nchild_t, tag::tracker               >;
 
-template struct nparent_r<ichild_r, tag::reporter::intrusive>;
+template struct nparent_r<ichild_r, tag::reporter::intrusive   >;
 template struct nparent_r<nchild_r, tag::reporter              >;
-template struct nparent_r<ichild_t, tag::tracker::intrusive >;
+template struct nparent_r<ichild_t, tag::tracker::intrusive    >;
 template struct nparent_r<nchild_t, tag::tracker               >;
 
-template struct iparent_t<ichild_r, tag::reporter::intrusive>;
+template struct iparent_t<ichild_r, tag::reporter::intrusive   >;
 template struct iparent_t<nchild_r, tag::reporter              >;
-template struct iparent_t<ichild_t, tag::tracker::intrusive >;
+template struct iparent_t<ichild_t, tag::tracker::intrusive    >;
 template struct iparent_t<nchild_t, tag::tracker               >;
 
-template struct nparent_t<ichild_r, tag::reporter::intrusive>;
+template struct nparent_t<ichild_r, tag::reporter::intrusive   >;
 template struct nparent_t<nchild_r, tag::reporter              >;
-template struct nparent_t<ichild_t, tag::tracker::intrusive >;
+template struct nparent_t<ichild_t, tag::tracker::intrusive    >;
 template struct nparent_t<nchild_t, tag::tracker               >;
 
 template struct ichild_r<iparent_r<ichild_r, tag::reporter::intrusive>, tag::reporter::intrusive>;
@@ -527,7 +528,7 @@ public:
 
   self_parent& operator= (self_parent&& other) noexcept
   {
-    m_tracker.transfer_bindings (std::move (other.m_tracker));
+    m_tracker = std::move (other.m_tracker);
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -570,7 +571,7 @@ public:
 
   anon_self_parent& operator= (anon_self_parent&& other) noexcept
   {
-    m_tracker.transfer_bindings (std::move (other.m_tracker));
+    m_tracker = std::move (other.m_tracker);
     return *this;
   }
   
@@ -613,7 +614,7 @@ public:
 
   anon1& operator= (anon1&& other) noexcept
   {
-    m_tracker.transfer_bindings (std::move (other.m_tracker));
+    m_tracker = std::move (other.m_tracker);
     return *this;
   }
 
@@ -658,7 +659,7 @@ public:
 
   anon2& operator= (anon2&& other) noexcept
   {
-    m_tracker.transfer_bindings (std::move (other.m_tracker));
+    m_tracker = std::move (other.m_tracker);
     return *this;
   }
 
@@ -709,7 +710,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker.copy_bindings (other.m_tracker);
+        m_tracker = other.m_tracker;
         m_name = other.m_name;
       }
     return *this;
@@ -717,7 +718,7 @@ public:
 
   named1& operator= (named1&& other) noexcept
   {
-    m_tracker.transfer_bindings (std::move (other.m_tracker));
+    m_tracker = std::move (other.m_tracker);
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -775,7 +776,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker.copy_bindings (other.m_tracker);
+        m_tracker = other.m_tracker;
         m_name = other.m_name;
       }
     return *this;
@@ -783,7 +784,7 @@ public:
   
   named2& operator= (named2&& other) noexcept
   {
-    m_tracker.transfer_bindings (std::move (other.m_tracker));
+    m_tracker = std::move (other.m_tracker);
     m_name = std::move (other.m_name);
     return *this;
   }
