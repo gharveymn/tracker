@@ -1343,14 +1343,14 @@ namespace gch
     {
       if (&other != this)
         base::operator= (other);
-      // don't set m_parent since it's still attached to the same one
+      // don't set m_parent since it shouldn't change
       return *this;
     }
   
     reporter& operator= (reporter&& other) noexcept
     {
       base::operator= (std::move (other));
-      // don't set m_parent since it's still attached to the same one
+      // don't set m_parent since it shouldn't change
       return *this;
     }
 
@@ -1376,9 +1376,8 @@ namespace gch
     void swap (reporter& other)
     {
       base::swap (other);
-
-      using std::swap;
-      swap (m_parent, other.m_parent);
+      
+      // swap does not touch m_parent;
     }
   
     reporter& rebind (remote_interface_type& new_remote)
@@ -1454,14 +1453,14 @@ namespace gch
     {
       if (&other != this)
         base::operator= (other);
-      // don't set m_parent since it's still attached to the same one
+      // don't set m_parent since it shouldn't change
       return *this;
     }
   
     tracker& operator= (tracker&& other) noexcept
     {
       base::operator= (std::move (other));
-      // don't set m_parent since it's still attached to the same one
+      // don't set m_parent since it shouldn't change
       return *this;
     }
 
@@ -1493,8 +1492,7 @@ namespace gch
     void swap (tracker& other) noexcept
     {
       base::swap (other);
-      using std::swap;
-      swap (m_parent, other.m_parent); // caution!
+      // swap does not touch m_parent
     }
 
     GCH_NODISCARD
