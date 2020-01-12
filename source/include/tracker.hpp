@@ -297,7 +297,7 @@ namespace gch
 
     private:
       
-      using self_iter = typename list<remote_reporter_type>::iterator;
+      using self_iter  = typename list<remote_reporter_type>::iterator;
       using self_citer = typename list<remote_reporter_type>::const_iterator;
   
     public:
@@ -312,21 +312,21 @@ namespace gch
       // Note that the destructor here does NOT perform a debinding. This is 
       // for optimizations higher in the hierarchy.
   
-      explicit reporter_base (gch::tag::bind_t, remote_base_type& remote)
+      reporter_base (gch::tag::bind_t, remote_base_type& remote)
         : base (gch::tag::bind, remote),
           m_self_iter (remote.track (*this))
       { }
   
-      explicit reporter_base (remote_base_type& remote, self_iter it)
+      reporter_base (remote_base_type& remote, self_iter it)
         : base (gch::tag::bind, remote),
           m_self_iter (std::move (it))
       { }
   
       reporter_base (const reporter_base& other)
+        : base (other)
       {
-        base::track (other.get_remote_base ());
-        if (other.is_tracked ())
-          m_self_iter = other.get_remote_base ().track (*this);
+        if (base::is_tracked ())
+          m_self_iter = base::get_remote_base ().track (*this);
       }
   
       reporter_base (reporter_base&& other) noexcept
