@@ -1390,46 +1390,59 @@ std::chrono::duration<double> test_reporter (void)
 int main()
 {
   try
-    {      
-      std::cout << test_reporter<child, parent> ().count () << std::endl;
-      std::cout
-        << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count ()
-        << std::endl;
+  {      
+    std::cout << test_reporter<child, parent> ().count () << std::endl;
+    std::cout
+      << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count ()
+      << std::endl;
 
-      std::cout << perf_create<child, parent> ().count () << std::endl;
-      std::cout
-        << perf_create<nonintruded_child, nonintruded_parent> ().count ()
-        << std::endl;
+    std::cout << perf_create<child, parent> ().count () << std::endl;
+    std::cout
+      << perf_create<nonintruded_child, nonintruded_parent> ().count ()
+      << std::endl;
 
-      std::cout << perf_access<child, parent> ().count () << std::endl;
-      std::cout
-        << perf_access<nonintruded_child, nonintruded_parent> ().count ()
-        << std::endl;
+    std::cout << perf_access<child, parent> ().count () << std::endl;
+    std::cout
+      << perf_access<nonintruded_child, nonintruded_parent> ().count ()
+      << std::endl;
 
-      plf::list<int> x = {1, 2, 3, 4};
-      plf::list<int>::iterator last = --x.end ();
-      std::reverse_iterator<plf::list<int>::iterator> rb (x.end ());
-      std::cout << (*last == *rb) << std::endl;
+    plf::list<int> x = {1, 2, 3, 4};
+    plf::list<int>::iterator last = --x.end ();
+    std::reverse_iterator<plf::list<int>::iterator> rb (x.end ());
+    std::cout << (*last == *rb) << std::endl;
 
-      test_multireporter ();
+    test_multireporter ();
 
 //      std::cout << "got back" << std::endl;
 
-      std::cout << perf_multireporter ().count () << std::endl;
-      std::cout << perf_disparate_multireporter ().count () << std::endl;
+    std::cout << perf_multireporter ().count () << std::endl;
+    std::cout << perf_disparate_multireporter ().count () << std::endl;
 
-      test_disparate_multireporter ();
-      test_binding ();
-      
-      tracker<tag::tracker, child, tag::reporter::intrusive> standalone;
-      standalone_tracker<nonintruded_child> standalone1;
-      
-    }
+    test_disparate_multireporter ();
+    test_binding ();
+    
+    standalone_tracker<tag::reporter> sa_tkr;
+    standalone_reporter<tag::tracker> sa_rptr (tag::bind, sa_tkr);
+
+    std::cout << &sa_rptr << std::endl;
+    std::cout << &sa_tkr << std::endl << std::endl;
+
+    std::cout << sa_rptr.has_remote () << std::endl;
+    std::cout << &sa_rptr.get_remote () << std::endl;
+    std::cout << sa_tkr.num_reporters () << std::endl;
+    std::cout << &sa_tkr.front () << std::endl << std::endl;
+    
+    sa_rptr.debind ();
+
+    std::cout << sa_rptr.has_remote () << std::endl;
+    std::cout << sa_tkr.num_reporters () << std::endl << std::endl;
+    
+  }
   catch (std::exception &e)
-    {
-      std::cout << e.what () << std::endl;
-      return 1;
-    }
+  {
+    std::cout << e.what () << std::endl;
+    return 1;
+  }
   
   std::cout << "itracker : ireporter :" << sizeof (tracker<child,   parent, tag::reporter::intrusive, tag::intrusive>) << std::endl;
   std::cout << "itracker : nreporter :" << sizeof (tracker<child,   parent, tag::reporter              , tag::intrusive>) << std::endl;
