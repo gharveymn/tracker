@@ -15,7 +15,6 @@
 #include <plf_list.h>
 #include <iterator>
 #include <optional_ref.hpp>
-#include <cassert>
 
 #if __has_cpp_attribute(nodiscard)
 #  define GCH_NODISCARD [[nodiscard]]
