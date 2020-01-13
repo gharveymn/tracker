@@ -1572,7 +1572,8 @@ namespace gch
                       tag::tracker::intrusive, tag::intrusive>
   { 
     using remote_type = standalone_tracker<tag::reporter>;
-    using base = reporter<standalone_reporter, remote_type, tag::tracker::intrusive, tag::intrusive>;
+    using base = reporter<standalone_reporter, remote_type, 
+                          tag::tracker::intrusive, tag::intrusive>;
   public:
     using base::base;
   };
@@ -1582,7 +1583,13 @@ namespace gch
     : public tracker<standalone_tracker<tag::reporter>,
                      standalone_reporter<tag::tracker>,
                      tag::reporter::intrusive, tag::intrusive>
-  { };
+  {
+    using remote_type = standalone_reporter<tag::tracker>;
+    using base = tracker<standalone_tracker, remote_type,
+                         tag::reporter::intrusive, tag::intrusive>;
+  public:
+    using base::base;
+  };
   
   template <typename Parent, typename Remote = Parent>
   using multireporter = tracker<Parent, Remote, 
