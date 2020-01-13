@@ -1584,9 +1584,15 @@ namespace gch
                      tag::reporter::intrusive, tag::intrusive>
   { };
   
-  template <typename LocalParent, typename Remote = LocalParent>
-  using multireporter = tracker<LocalParent, Remote, 
+  template <typename Parent, typename Remote = Parent>
+  using multireporter = tracker<Parent, Remote, 
                                 tag::tracker::nonintrusive, tag::nonintrusive>;
+  
+  template <typename Derived, typename Remote, typename RemoteTag = tag::tracker>
+  using intrusive_reporter = reporter<Derived, Remote, RemoteTag, tag::intrusive>;
+  
+  template <typename Derived, typename Remote, typename RemoteTag = tag::tracker>
+  using intrusive_tracker = reporter<Derived, Remote, RemoteTag, tag::intrusive>;
 
   template <typename ...Ts, typename ...RemoteTypes>
   void bind (tracker<Ts...>& l, RemoteTypes&... Remotes)
