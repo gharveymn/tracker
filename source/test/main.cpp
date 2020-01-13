@@ -1422,6 +1422,7 @@ int main()
       test_binding ();
       
       tracker<tag::tracker, child, tag::reporter::intrusive> standalone;
+      standalone_tracker<nonintruded_child> standalone1;
       
     }
   catch (std::exception &e)

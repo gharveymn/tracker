@@ -1578,23 +1578,23 @@ namespace gch
   }; // tracker
   
   //! standalone reporter (no parent)
-  template <typename Remote, typename RemoteTag, typename LocalTag>
-  class reporter<tag::reporter, Remote, RemoteTag, LocalTag>
-    : public reporter<reporter<tag::reporter, Remote, RemoteTag, LocalTag>,
+  template <typename Remote, typename RemoteTag>
+  class reporter<tag::reporter, Remote, RemoteTag, tag::nonintrusive>
+    : public reporter<reporter<tag::reporter, Remote, RemoteTag, tag::nonintrusive>,
                      Remote, RemoteTag, tag::intrusive>
   { };
   
   //! standalone tracker (no parent)
-  template <typename Remote, typename RemoteTag, typename LocalTag>
-  class tracker<tag::tracker, Remote, RemoteTag, LocalTag>
-    : public tracker<tracker<tag::tracker, Remote, RemoteTag, LocalTag>, 
+  template <typename Remote, typename RemoteTag>
+  class tracker<tag::tracker, Remote, RemoteTag, tag::nonintrusive>
+    : public tracker<tracker<tag::tracker, Remote, RemoteTag, tag::nonintrusive>, 
                      Remote, RemoteTag, tag::intrusive>
   { };
   
-  template <typename Remote, typename RemoteTag = tag::nonintrusive>
+  template <typename Remote, typename RemoteTag = tag::tracker>
   using standalone_reporter = reporter<tag::reporter, Remote, RemoteTag>;
   
-  template <typename Remote, typename RemoteTag = tag::nonintrusive>
+  template <typename Remote, typename RemoteTag = tag::reporter>
   using standalone_tracker = tracker<tag::tracker, Remote, RemoteTag>;
   
   template <typename LocalParent, typename Remote = LocalParent>
