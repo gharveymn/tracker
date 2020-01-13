@@ -959,15 +959,9 @@ namespace gch
       {
         return base::is_tracked ();
       }
-      
-      GCH_NODISCARD 
-      GCH_CPP14_CONSTEXPR remote_type& get_remote (void) noexcept
-      {
-        return get_remote_interface ().get_parent ();
-      }
   
       GCH_NODISCARD
-      constexpr const remote_type& get_remote (void) const noexcept
+      constexpr remote_type& get_remote (void) const noexcept
       {
         return get_remote_interface ().get_parent ();
       }
