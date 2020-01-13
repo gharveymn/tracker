@@ -183,7 +183,7 @@ namespace gch
       GCH_NODISCARD
       constexpr bool is_tracking (remote_base_type& remote_cmp) const noexcept 
       {
-        return &remote_cmp == m_remote_base.get_pointer ();
+        return m_remote_base.contains (remote_cmp);
       }
     
       void track (remote_base_type& remote) noexcept
