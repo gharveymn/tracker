@@ -49,12 +49,6 @@ namespace gch
     struct nonintrusive;
     struct standalone;
     
-    // template <typename Parent, typename IntrusiveTag> 
-    // struct reporter;
-    //
-    // template <typename Parent, typename IntrusiveTag>
-    // struct tracker;
-    
     GCH_INLINE_VARS constexpr struct bind_t { bind_t (void) = default; } bind;
   }
   
@@ -94,58 +88,38 @@ namespace gch
   class tracker;
   
   template <>
-  class reporter<> : public detail::tag::reporter_base { };
+  class reporter<> 
+    : public detail::tag::reporter_base 
+  { };
   
   template <>
-  class tracker<> : public detail::tag::tracker_base { };
+  class tracker<> 
+    : public detail::tag::tracker_base 
+  { };
   
   // acts as a tag
   template <typename Parent>
-  class reporter<Parent, tag::intrusive> : public detail::tag::reporter_base
-  {
-  public:
-    using parent_type   = Parent;
-    using intrusive_tag = tag::intrusive;
-
-    template <typename RemoteTag>
-    using interface_type = gch::reporter<Parent, RemoteTag, tag::intrusive>;
-  };
+  class reporter<Parent, tag::intrusive> 
+    : public detail::tag::reporter_base
+  { };
 
   // acts as a tag
   template <typename Parent>
-  class tracker<Parent, tag::intrusive> : public detail::tag::tracker_base
-  {
-  public:
-    using parent_type   = Parent;
-    using intrusive_tag = tag::intrusive;
-
-    template <typename RemoteTag>
-    using interface_type = gch::tracker<Parent, RemoteTag, tag::intrusive>;
-  };
+  class tracker<Parent, tag::intrusive> 
+    : public detail::tag::tracker_base
+  { };
 
   // acts as a tag
   template <typename Parent>
-  class reporter<Parent, tag::nonintrusive> : public detail::tag::reporter_base
-  {
-  public:
-    using parent_type   = Parent;
-    using intrusive_tag = tag::nonintrusive;
-
-    template <typename RemoteTag>
-    using interface_type = gch::reporter<Parent, RemoteTag, tag::nonintrusive>;
-  };
+  class reporter<Parent, tag::nonintrusive> 
+    : public detail::tag::reporter_base
+  { };
 
   // acts as a tag
   template <typename Parent>
-  class tracker<Parent, tag::nonintrusive> : public detail::tag::tracker_base
-  {
-  public:
-    using parent_type   = Parent;
-    using intrusive_tag = tag::nonintrusive;
-    
-    template <typename RemoteTag>
-    using interface_type = gch::tracker<Parent, RemoteTag, tag::nonintrusive>;
-  };
+  class tracker<Parent, tag::nonintrusive> 
+    : public detail::tag::tracker_base
+  { };
   
   namespace detail::tag
   {
@@ -937,23 +911,7 @@ namespace gch
   {
     
     namespace tag
-    {
-      template <typename Tag>
-      struct shortened
-      {
-        using type = Tag;
-      };
-      
-      template <template <typename ...> class Interface1,
-                template <typename ...> class Interface2>
-      struct shortened<Interface1<Interface1<gch::tag::standalone, Interface2<>>, gch::tag::intrusive>>
-      {
-        using type = Interface1<>;
-      };
-      
-      template <typename Tag>
-      using shortened_t = typename shortened<Tag>::type;
-  
+    {  
       template <typename Interface>
       struct create_tag;
   
@@ -997,7 +955,7 @@ namespace gch
       
       template <typename LocalTag, typename RemoteTag, typename = void>
       struct remote_interface;
-  
+      
       template <typename LocalTag, template <typename ...> class TRemoteTag,
                 typename Parent, typename IntrusiveTag>
       struct remote_interface<LocalTag, TRemoteTag<Parent, IntrusiveTag>,
@@ -1017,41 +975,6 @@ namespace gch
       using remote_interface_t = typename remote_interface<LocalTag, RemoteTag>::type;
       
     }
-    
-    template <typename LocalTag, typename RemoteTag>
-    using interface_t = typename LocalTag::template interface_type<RemoteTag>;
-    
-    template <typename, typename RemoteTag>
-    struct resolved_remote
-    {
-      using type = typename RemoteTag::parent_type;
-    };
-    
-    template <typename LocalTag, template <typename ...> class TRemoteTag>
-    struct resolved_remote<LocalTag, TRemoteTag<>>
-    {
-      using type = TRemoteTag<gch::tag::standalone, tag::shortened_t<LocalTag>>;
-    };
-  
-    template <typename LocalTag, typename RemoteTag>
-    using resolved_remote_t = typename resolved_remote<LocalTag, RemoteTag>::type;
-  
-    template <typename LocalTag, typename RemoteTag>
-    struct resolved_interface
-    {
-      using type = typename RemoteTag::template interface_type<LocalTag>;
-    };
-  
-    template <typename LocalTag, template <typename ...> class TRemoteTag>
-    struct resolved_interface<LocalTag, TRemoteTag<>>
-    {
-      using type = TRemoteTag<
-                     TRemoteTag<gch::tag::standalone, tag::shortened_t<LocalTag>>,
-                     tag::shortened_t<LocalTag>, gch::tag::intrusive>;
-    };
-    
-    template <typename LocalTag, typename RemoteTag>
-    using resolved_interface_t = typename resolved_interface<LocalTag, RemoteTag>::type;
   
     template <typename Interface>
     struct interface_traits;

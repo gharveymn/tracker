@@ -78,7 +78,7 @@ struct nchild_t
 
 template <typename LocalTag, template <typename ...> class Child,
           template <typename ...> typename TRemoteTag>
-using base_type = typename LocalTag::template interface_type<TRemoteTag<Child<LocalTag>>>;
+using base_type = detail::tag::remote_interface_t<TRemoteTag<Child<LocalTag>>, LocalTag>;
 
 template <template <typename ...> class Child, 
           template <typename ...> typename TRemoteTag>
@@ -1415,6 +1415,7 @@ int main()
     std::cout
       << perf_access<nonintruded_child, nonintruded_parent> ().count ()
       << std::endl;
+    
 
     plf::list<int> x = {1, 2, 3, 4};
     plf::list<int>::iterator last = --x.end ();
