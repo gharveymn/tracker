@@ -936,8 +936,8 @@ namespace gch
       struct remote_parent;
   
       template <typename LocalTag, template <typename ...> class TRemoteTag, 
-                typename Parent, typename IntrusiveTag>
-      struct remote_parent<LocalTag, TRemoteTag<Parent, IntrusiveTag>, 
+                typename Parent, typename IntrusiveTag, typename Discard>
+      struct remote_parent<LocalTag, TRemoteTag<Parent, IntrusiveTag, Discard>, 
                            typename std::enable_if<
                              ! std::is_same<Parent, gch::tag::standalone>::value>::type>
       {
@@ -957,8 +957,8 @@ namespace gch
       struct remote_interface;
       
       template <typename LocalTag, template <typename ...> class TRemoteTag,
-                typename Parent, typename IntrusiveTag>
-      struct remote_interface<LocalTag, TRemoteTag<Parent, IntrusiveTag>,
+                typename Parent, typename IntrusiveTag, typename Discard>
+      struct remote_interface<LocalTag, TRemoteTag<Parent, IntrusiveTag, Discard>,
                               typename std::enable_if<
                                 ! std::is_same<Parent, gch::tag::standalone>::value>::type>
       {
@@ -968,7 +968,9 @@ namespace gch
       template <typename LocalTag, template <typename ...> class TRemoteTag>
       struct remote_interface<LocalTag, TRemoteTag<gch::tag::standalone>>
       {
-        using type = TRemoteTag<TRemoteTag<gch::tag::standalone, LocalTag>, LocalTag, gch::tag::intrusive>;
+        using type = TRemoteTag<TRemoteTag<gch::tag::standalone, LocalTag>, 
+                                LocalTag, 
+                                gch::tag::intrusive>;
       };
       
       template <typename LocalTag, typename RemoteTag>
@@ -1141,12 +1143,8 @@ namespace gch
       using criter = std::reverse_iterator<citer>;
       using ref    = remote_type&;
       using cref   = const remote_type&;
-      
-    protected:
-      
+  
       using init_list = std::initializer_list<std::reference_wrapper<remote_interface_type>>;
-
-    public:
 
       using base::base;
       
@@ -1372,12 +1370,7 @@ namespace gch
     using remote_interface_type = typename base::remote_interface_type;
     
     using local_common_type     = base;
-    // using local_base_type       = typename local_common_type::base;
-    // using local_base_common_type = typename local_base_type::base;
-    
     using remote_common_type    = typename remote_interface_type::local_common_type;
-    // using remote_base_type      = typename remote_interface_type::local_base_type;
-    // using remote_base_common_type = typename remote_interface_type::local_base_common_type;
     
     template <typename, typename, typename>
     friend class remote_iterator;
@@ -1671,7 +1664,7 @@ namespace gch
   
   template <typename Derived, typename RemoteTag>
   using intrusive_reporter = reporter<Derived, RemoteTag, tag::intrusive>;
-  
+
   template <typename Derived, typename RemoteTag>
   using intrusive_tracker = reporter<Derived, RemoteTag, tag::intrusive>;
   

@@ -195,11 +195,11 @@ template struct nchild_t<tag::nonintrusive::tracker <nparent_t<nchild_t, tag::no
 class parent;
 class child;
 
-class child : public reporter<child, tracker<parent>, tag::intrusive>
+class child : public intrusive_reporter<child, tracker<parent>>
 {
 public:
 
-  using base = reporter<child, tracker<parent>, tag::intrusive>;
+  using base = intrusive_reporter<child, tracker<parent>>;
 
   child (void) = default;
 
@@ -208,21 +208,21 @@ public:
   { }
 
   child (typename base::remote_interface_type& tkr)
-    : reporter (tag::bind, tkr)
+    : base (tag::bind, tkr)
   { }
 
   child (typename base::remote_interface_type& tkr, std::string s)
-    : reporter (tag::bind, tkr),
+    : base (tag::bind, tkr),
       m_name (std::move (s))
   { }
 
   child (const child& o)
-    : reporter (o),
+    : base (o),
       m_name (o.m_name)
   { }
 
   child (child&& o) noexcept
-    : reporter (std::move (o)),
+    : base (std::move (o)),
       m_name (std::move (o.m_name))
   { }
   
@@ -264,7 +264,7 @@ class parent
 public:
 
   using reporter_type = child;
-  using tracker_type  = tracker<parent, tag::intrusive::reporter<child>>;
+  using tracker_type  = tracker<parent, reporter<child, tag::intrusive>>;
 
   parent (void)
     : m_children (*this)
