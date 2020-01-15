@@ -60,8 +60,29 @@ namespace gch
   
   namespace detail::tag
   {
-    struct reporter_base { using base = reporter_base; };
-    struct tracker_base  { using base = tracker_base;  };
+    struct reporter_base
+    {
+      reporter_base            (void)                           = delete;
+      reporter_base            (const reporter_base&)           = delete;
+      reporter_base            (reporter_base&& other) noexcept = delete;
+      reporter_base& operator= (const reporter_base&)           = delete;
+      reporter_base& operator= (reporter_base&& other) noexcept = delete;
+      ~reporter_base           (void)                           = delete;
+      
+      using base = reporter_base; 
+    };
+    
+    struct tracker_base
+    {
+      tracker_base            (void)                          = delete;
+      tracker_base            (const tracker_base&)           = delete;
+      tracker_base            (tracker_base&& other) noexcept = delete;
+      tracker_base& operator= (const tracker_base&)           = delete;
+      tracker_base& operator= (tracker_base&& other) noexcept = delete;
+      ~tracker_base           (void)                          = delete;
+      
+      using base = tracker_base;  
+    };
   }
   
   template <typename Local = tag::standalone, typename RemoteTag = tag::nonintrusive,
@@ -85,12 +106,6 @@ namespace gch
   public:
     using parent_type   = Parent;
     using intrusive_tag = tag::intrusive;
-  
-    template <typename RemoteTag>
-    struct interface
-    {
-      using type = gch::reporter<Parent, RemoteTag, tag::intrusive>;
-    };
 
     template <typename RemoteTag>
     using interface_type = gch::reporter<Parent, RemoteTag, tag::intrusive>;
@@ -103,12 +118,6 @@ namespace gch
   public:
     using parent_type   = Parent;
     using intrusive_tag = tag::intrusive;
-    
-    template <typename RemoteTag>
-    struct interface
-    {
-      using type = gch::tracker<Parent, RemoteTag, tag::intrusive>;
-    };
 
     template <typename RemoteTag>
     using interface_type = gch::tracker<Parent, RemoteTag, tag::intrusive>;
@@ -121,12 +130,6 @@ namespace gch
   public:
     using parent_type   = Parent;
     using intrusive_tag = tag::nonintrusive;
-    
-    template <typename RemoteTag>
-    struct interface
-    {
-      using type = gch::reporter<Parent, RemoteTag, tag::nonintrusive>;
-    };
 
     template <typename RemoteTag>
     using interface_type = gch::reporter<Parent, RemoteTag, tag::nonintrusive>;
@@ -139,12 +142,6 @@ namespace gch
   public:
     using parent_type   = Parent;
     using intrusive_tag = tag::nonintrusive;
-    
-    template <typename RemoteTag>
-    struct interface
-    {
-      using type = gch::tracker<Parent, RemoteTag, tag::nonintrusive>;
-    };
     
     template <typename RemoteTag>
     using interface_type = gch::tracker<Parent, RemoteTag, tag::nonintrusive>;
@@ -788,7 +785,7 @@ namespace gch
       return *this;
     }
   
-    template <typename LocalTag, typename RemoteTag>
+    template <typename Interface>
     class reporter_common;
   
     template <typename LocalTag, typename RemoteTag>
@@ -934,6 +931,69 @@ namespace gch
       
       template <typename Tag>
       using shortened_t = typename shortened<Tag>::type;
+  
+      template <typename Interface>
+      struct create_tag;
+  
+      template <template <typename ...> class TType,
+                typename Parent, typename RemoteType, typename IntrusiveTag>
+      struct create_tag<TType<Parent, RemoteType, IntrusiveTag>>
+      {
+        using type = TType<Parent, IntrusiveTag>;
+      };
+  
+      template <template <typename ...> class TType, typename RemoteTag>
+      struct create_tag<TType<TType<gch::tag::standalone, RemoteTag>, 
+                        RemoteTag, gch::tag::intrusive>>
+      {
+        using type = TType<>;
+      };
+      
+      template <typename Interface>
+      using create_tag_t = typename create_tag<Interface>::type; 
+      
+      template <typename LocalTag, typename RemoteTag, typename = void>
+      struct remote_parent;
+  
+      template <typename LocalTag, template <typename ...> class TRemoteTag, 
+                typename Parent, typename IntrusiveTag>
+      struct remote_parent<LocalTag, TRemoteTag<Parent, IntrusiveTag>, 
+                           typename std::enable_if<
+                             ! std::is_same<Parent, gch::tag::standalone>::value>::type>
+      {
+        using type = Parent;
+      };
+  
+      template <typename LocalTag, template <typename ...> class TRemoteTag>
+      struct remote_parent<LocalTag, TRemoteTag<gch::tag::standalone>>
+      {
+        using type = TRemoteTag<gch::tag::standalone, LocalTag>;
+      };
+      
+      template <typename LocalTag, typename RemoteTag>
+      using remote_parent_t = typename remote_parent<LocalTag, RemoteTag>::type;
+      
+      template <typename LocalTag, typename RemoteTag, typename = void>
+      struct remote_interface;
+  
+      template <typename LocalTag, template <typename ...> class TRemoteTag,
+                typename Parent, typename IntrusiveTag>
+      struct remote_interface<LocalTag, TRemoteTag<Parent, IntrusiveTag>,
+                              typename std::enable_if<
+                                ! std::is_same<Parent, gch::tag::standalone>::value>::type>
+      {
+        using type = TRemoteTag<Parent, LocalTag, IntrusiveTag>;
+      };
+  
+      template <typename LocalTag, template <typename ...> class TRemoteTag>
+      struct remote_interface<LocalTag, TRemoteTag<gch::tag::standalone>>
+      {
+        using type = TRemoteTag<TRemoteTag<gch::tag::standalone, LocalTag>, LocalTag, gch::tag::intrusive>;
+      };
+      
+      template <typename LocalTag, typename RemoteTag>
+      using remote_interface_t = typename remote_interface<LocalTag, RemoteTag>::type;
+      
     }
     
     template <typename LocalTag, typename RemoteTag>
@@ -975,32 +1035,33 @@ namespace gch
     // reporter_common //
     /////////////////////
     
-    template <typename LocalTag, typename RemoteTag>
-    class reporter_common
+    template <typename Parent, typename RemoteTag, typename IntrusiveTag>
+    class reporter_common<reporter<Parent, RemoteTag, IntrusiveTag>>
       : protected reporter_base<tag::reporter_base, typename RemoteTag::base>
     {
     public:
       
       using base = reporter_base<tag::reporter_base, typename RemoteTag::base>;
   
-      using local_tag             = LocalTag;
+      using local_interface_type  = reporter<Parent, RemoteTag, IntrusiveTag>;
+  
+      using local_tag             = tag::create_tag_t<local_interface_type>;
       using remote_tag            = RemoteTag;
       
-      using local_type            = typename local_tag::parent_type;
-      using remote_type           = resolved_remote_t<local_tag, remote_tag>;
+      using local_type            = Parent;
+      using remote_type           = tag::remote_parent_t<local_tag, remote_tag>;
       // using remote_type           = typename remote_tag::parent_type;
   
       using local_base_tag        = typename local_tag::base;
       using remote_base_tag       = typename remote_tag::base;
       
-      using local_interface_type  = interface_t<local_tag, remote_tag>;
-      using remote_interface_type = resolved_interface_t<local_tag, remote_tag>;
+      using remote_interface_type = tag::remote_interface_t<local_tag, remote_tag>;
       // using remote_interface_type = interface_t<remote_tag, local_tag>;
   
       using remote_base_type      = typename base::remote_base_type;
   
       friend remote_interface_type;
-      friend class reporter_common<remote_tag, local_tag>;
+      friend class reporter_common<remote_interface_type>;
       
       using base::debind;
       using base::get_position;
@@ -1330,15 +1391,15 @@ namespace gch
   
   template <typename Derived, typename RemoteTag>
   class reporter<Derived, RemoteTag, tag::intrusive>
-    : private detail::reporter_common<reporter<Derived, tag::intrusive>, RemoteTag>,
+    : private detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>,
       public detail::intrusive_common<Derived>
   {
   public:
     
-    using base = detail::reporter_common<reporter<Derived, tag::intrusive>, RemoteTag>;
+    using base = detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>;
     using access_base = detail::intrusive_common<Derived>;
     
-    using local_tag             = reporter<Derived, tag::intrusive>;
+    using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
   
     using derived_type          = Derived;
@@ -1472,15 +1533,15 @@ namespace gch
   
   template <typename Parent, typename RemoteTag>
   class reporter<Parent, RemoteTag, tag::nonintrusive>
-    : public detail::reporter_common<reporter<Parent, tag::nonintrusive>, RemoteTag>,
+    : public detail::reporter_common<reporter<Parent, RemoteTag, tag::nonintrusive>>,
       public detail::nonintrusive_common<Parent>
   {
-    using base = detail::reporter_common<reporter<Parent, tag::nonintrusive>, RemoteTag>;
+    using base = detail::reporter_common<reporter<Parent, RemoteTag, tag::nonintrusive>>;
     using access_base = detail::nonintrusive_common<Parent>;
     
   public:
     
-    using local_tag             = reporter<Parent, tag::nonintrusive>;
+    using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
   
     using parent_type           = Parent;
