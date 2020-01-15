@@ -305,6 +305,12 @@ public:
   {
     return m_children.num_reporters ();
   }
+  
+  tracker_type::citer find (const child& c) 
+  {
+    return std::find_if (m_children.begin (), m_children.end (),
+                         [&c](const child& x) { return &x == &c; });
+  }
 
   tracker_type::iter begin (void) noexcept { return m_children.begin (); }
   tracker_type::iter end (void)   noexcept { return m_children.end (); }

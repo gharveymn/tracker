@@ -786,129 +786,6 @@ namespace gch
   
     template <typename Interface>
     class tracker_common;
-  
-  } // detail
-
-  // pretend like reporter_base doesn't exist
-  template <typename ReporterIt, typename RemoteInterface, typename Remote>
-  class remote_iterator
-  {
-    using reporter_iter         = ReporterIt;
-    using reporter_type         = typename ReporterIt::value_type;
-    using remote_interface_type = RemoteInterface;
-    using remote_type           = Remote;
-
-  public:
-
-    using difference_type   = typename reporter_iter::difference_type;
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type        = remote_type;
-    using pointer           = remote_type *;
-    using reference         = remote_type&;
-  
-    template <typename Interface>
-    friend class detail::tracker_common;
-
-    template <typename Iter>
-    constexpr /* implicit */ remote_iterator (Iter it)
-      : m_iter (reporter_iter (it))
-    { }
-
-    remote_iterator (const remote_iterator&)     = default;
-    remote_iterator (remote_iterator&&) noexcept = default;
-
-    // ref-qualified to prevent assignment to rvalues
-    remote_iterator& operator= (const remote_iterator& other) &
-    {
-      if (&other != this)
-        m_iter = other.m_iter;
-      return *this;
-    }
-
-    // ref-qualified to prevent assignment to rvalues
-    remote_iterator& operator= (remote_iterator&& other) & noexcept
-    {
-      if (&other != this)
-        m_iter = std::move (other.m_iter);
-      return *this;
-    }
-
-    constexpr remote_type& operator* (void) const noexcept
-    {
-      return get_remote ();
-    }
-
-    constexpr remote_type * operator-> (void) const noexcept
-    {
-      return &get_remote ();
-    }
-
-    remote_iterator& operator++ (void) noexcept
-    {
-      ++m_iter;
-      return *this;
-    }
-
-    remote_iterator operator++ (int) noexcept
-    {
-      const remote_iterator tmp = *this;
-      ++m_iter;
-      return tmp;
-    }
-
-    remote_iterator& operator-- (void) noexcept
-    {
-      --m_iter;
-      return *this;
-    }
-
-    remote_iterator operator-- (int) noexcept
-    {
-      const remote_iterator tmp = *this;
-      --m_iter;
-      return tmp;
-    }
-
-    friend bool operator== (const remote_iterator& l,
-                            const remote_iterator& r) noexcept
-    {
-      return l.m_iter == r.m_iter;
-    }
-
-    friend bool operator!= (const remote_iterator& l,
-                            const remote_iterator& r) noexcept
-    {
-      return l.m_iter != r.m_iter;
-    }
-
-    reporter_iter get_iterator (void) const noexcept
-    {
-      return m_iter;
-    }
-
-  private:
-  
-    /* implicit */ operator reporter_iter (void)
-    {
-      return m_iter;
-    }
-
-    constexpr remote_type& get_remote (void) const noexcept
-    {
-      return get_remote_interface ().get_parent ();
-    }
-
-    constexpr remote_interface_type& get_remote_interface (void) const noexcept
-    {
-      return static_cast<remote_interface_type&> (m_iter->get_remote_base ());
-    }
-
-    reporter_iter m_iter;
-
-  };
-  
-  namespace detail
-  {
     
     namespace tag
     {  
@@ -1130,15 +1007,181 @@ namespace gch
   
       using remote_interface_type = tag::remote_interface_t<local_tag, remote_tag>;
       
+      class iter;
+      class citer;
+      
     private:
       
       using rptr_iter            = typename base::rptr_iter;
       using rptr_citer           = typename base::rptr_citer;
+  
+      // pretend like reporter_base doesn't exist
+      template <typename ReporterIt>
+      class iter_common
+      {
+        using reporter_iter         = ReporterIt;
+        using reporter_type         = typename ReporterIt::value_type;
+  
+      public:
+    
+        using difference_type   = typename reporter_iter::difference_type;
+        using iterator_category = std::bidirectional_iterator_tag;
+        using value_type        = remote_type;
+        using pointer           = remote_type *;
+        using reference         = remote_type&;
+        
+        friend tracker_common;
+    
+        iter_common (void)                                = default;
+        iter_common (const iter_common&)                  = default;
+        iter_common (iter_common&&) noexcept              = default;
+        iter_common& operator= (const iter_common&) &     = default;
+        iter_common& operator= (iter_common&&) & noexcept = default;
+        ~iter_common (void)                               = default;
+    
+        constexpr /* implicit */ iter_common (reporter_iter it)
+            : m_iter (it)
+        { }
+    
+        iter_common& operator++ (void) noexcept
+        {
+          ++m_iter;
+          return *this;
+        }
+    
+        iter_common operator++ (int) noexcept
+        {
+          const iter_common tmp = *this;
+          ++m_iter;
+          return tmp;
+        }
+    
+        iter_common& operator-- (void) noexcept
+        {
+          --m_iter;
+          return *this;
+        }
+    
+        iter_common operator-- (int) noexcept
+        {
+          const iter_common tmp = *this;
+          --m_iter;
+          return tmp;
+        }
+    
+        friend bool operator== (const iter_common& l,
+                                const iter_common& r) noexcept
+        {
+          return l.m_iter == r.m_iter;
+        }
+    
+        friend bool operator!= (const iter_common& l,
+                                const iter_common& r) noexcept
+        {
+          return l.m_iter != r.m_iter;
+        }
+    
+        constexpr remote_interface_type& get_remote_interface (void) const noexcept
+        {
+          return static_cast<remote_interface_type&> (m_iter->get_remote_base ());
+        }
+        
+      protected:
+  
+        reporter_iter get_iterator (void) const noexcept
+        {
+          return m_iter;
+        }
+        
+      private:
+    
+        reporter_iter m_iter;
+        
+      };
       
     public:
+      
+      class iter 
+        : public iter_common<rptr_iter>
+      {
+        using base = iter_common<rptr_iter>;
+      public:
+        
+        friend citer;
+        
+        using base::base;
+        
+        iter            (void)              = default;
+        iter            (const iter&)       = default;
+        iter            (iter&&) noexcept   = default;
+        iter& operator= (const iter&) &     = default;
+        iter& operator= (iter&&) & noexcept = default;
+        ~iter           (void)              = default;
+  
+        constexpr remote_type& operator* (void) const noexcept
+        {
+          return get_remote ();
+        }
+  
+        constexpr remote_type * operator-> (void) const noexcept
+        {
+          return &get_remote ();
+        }
+  
+        constexpr remote_type& get_remote (void) const noexcept
+        {
+          return base::get_remote_interface ().get_parent ();
+        }
+        
+      };
+  
+      class citer
+        : public iter_common<rptr_citer>  
+      {
+        using base = iter_common<rptr_citer>;
+      public:
+  
+        using base::base;
+        
+        citer            (void)               = default;
+        citer            (const citer&)       = default;
+        citer            (citer&&) noexcept   = default;
+        citer& operator= (const citer&) &     = default;
+        citer& operator= (citer&&) & noexcept = default;
+        ~citer           (void)               = default;
+        
+        constexpr /* implicit */ citer (rptr_iter it)
+          : base (it)
+        { }
+  
+        constexpr /* implicit */ citer (const iter& it) noexcept
+          : citer (it.get_iterator ())
+        { }
+  
+        
+        constexpr /* implicit */ citer (iter&& it) noexcept
+          : citer (it.get_iterator ())
+        { }
+  
+        constexpr const remote_type& operator* (void) const noexcept
+        {
+          return get_remote ();
+        }
+  
+        constexpr const remote_type * operator-> (void) const noexcept
+        {
+          return &get_remote ();
+        }
+  
+        constexpr const remote_type& get_remote (void) const noexcept
+        {
+          return base::get_remote_interface ().get_parent ();
+        }
+        
+      };
     
-      using iter   = remote_iterator<rptr_iter, remote_interface_type, remote_type>;
-      using citer  = remote_iterator<rptr_citer, remote_interface_type, const remote_type>;
+      // using iter   = remote_iterator<rptr_iter, remote_interface_type, remote_type>;
+      // using citer  = remote_iterator<rptr_citer, remote_interface_type, const remote_type>;
       using riter  = std::reverse_iterator<iter>;
       using criter = std::reverse_iterator<citer>;
       using ref    = remote_type&;
@@ -1210,7 +1253,7 @@ namespace gch
       template <typename T>
       GCH_CPP14_CONSTEXPR iter transfer_bindings (T&& src, citer pos) noexcept
       {
-        return base::base_transfer_bindings (src, rptr_citer (pos));
+        return base::base_transfer_bindings (src, pos.get_iterator ());
       }
       
       template <typename T>
