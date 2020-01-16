@@ -970,6 +970,12 @@ namespace gch
       {
         return get_remote_interface ().get_parent ();
       }
+      
+      GCH_NODISCARD
+      constexpr optional_ref<remote_type> get_maybe_remote (void) const noexcept 
+      {
+        return has_remote () ? get_remote () : optional_ref<remote_type> (nullopt);
+      }
   
       GCH_NODISCARD
       constexpr remote_interface_type& get_remote_interface (void) const noexcept
@@ -1101,8 +1107,7 @@ namespace gch
       
     public:
       
-      class iter 
-        : public iter_common<rptr_iter>
+      class iter : public iter_common<rptr_iter>
       {
         using base = iter_common<rptr_iter>;
       public:
@@ -1135,8 +1140,7 @@ namespace gch
         
       };
   
-      class citer
-        : public iter_common<rptr_citer>  
+      class citer : public iter_common<rptr_citer>  
       {
         using base = iter_common<rptr_citer>;
       public:
@@ -1160,7 +1164,7 @@ namespace gch
   
         
         constexpr /* implicit */ citer (iter&& it) noexcept
-          : citer (it.get_iterator ())
+          : citer (std::move (it.get_iterator ()))
         { }
   
         constexpr const remote_type& operator* (void) const noexcept
@@ -1429,6 +1433,7 @@ namespace gch
     using base::wipe;
     using base::has_remote;
     using base::get_remote;
+    using base::get_maybe_remote;
   
     reporter            (void)                = default;
     reporter            (const reporter&)     = default;
@@ -1436,8 +1441,6 @@ namespace gch
     reporter& operator= (const reporter&)     = default;
     reporter& operator= (reporter&&) noexcept = default;
     ~reporter           (void)                = default;
-    
-    
   
     reporter& rebind (remote_interface_type& new_remote)
     {
