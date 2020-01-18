@@ -40,7 +40,7 @@ struct nchild_r
   explicit nchild_r (typename reporter_type::remote_interface_type& remote)
     : m_reporter (*this, remote)
   { }
-  
+
   nchild_r (nchild_r&& other) noexcept
     : m_reporter (std::move (other.m_reporter), *this)
   { }
@@ -80,16 +80,16 @@ template <typename LocalTag, template <typename ...> class Child,
           template <typename ...> typename TRemoteTag>
 using base_type = detail::tag::remote_interface_t<TRemoteTag<Child<LocalTag>>, LocalTag>;
 
-template <template <typename ...> class Child, 
+template <template <typename ...> class Child,
           template <typename ...> typename TRemoteTag>
 struct iparent_r
   : base_type<tag::intrusive::reporter<iparent_r<Child, TRemoteTag>>, Child, TRemoteTag>
 {
-  
+
   using child_type = Child<tag::intrusive::reporter<iparent_r>>;
 
   iparent_r (void) = default;
-  
+
   child_type create (void)
   {
     return child_type (*this);
@@ -100,29 +100,29 @@ struct iparent_r
 template <template <typename ...> class Child, template <typename ...> typename TRemoteTag>
 struct nparent_r
 {
-  
+
   using child_type = Child<reporter<nparent_r>>;
-  
+
   nparent_r (void) = default;
-  
+
   child_type create (void)
   {
     return child_type (m_reporter);
   }
-  
+
   base_type<reporter<nparent_r>, Child, TRemoteTag> m_reporter;
 
 };
 
 template <template <typename ...> class Child, template <typename ...> typename TRemoteTag>
-struct iparent_t 
+struct iparent_t
   : base_type<tag::intrusive::tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
 {
   
   using child_type = Child<tag::intrusive::tracker<iparent_t>>;
 
   iparent_t (void) = default;
-  
+
   child_type create (void)
   {
     return child_type (*this);
@@ -133,16 +133,16 @@ struct iparent_t
 template <template <typename ...> class Child, template <typename ...> typename TRemoteTag>
 struct nparent_t
 {
-  
+
   using child_type = Child<tracker<nparent_t>>;
 
   nparent_t (void) = default;
-  
+
   child_type create (void)
   {
     return child_type (m_tracker);
   }
-  
+
   base_type<tracker<nparent_t>, Child, TRemoteTag> m_tracker;
 
 };
@@ -225,7 +225,7 @@ public:
     : base (std::move (o)),
       m_name (std::move (o.m_name))
   { }
-  
+
   child& operator= (const child& other)
   {
     if (&other != this)
@@ -300,13 +300,13 @@ public:
       o << c << " ";
     return o << "}";
   }
-  
-  std::size_t num_children (void) noexcept 
+
+  std::size_t num_children (void) noexcept
   {
     return m_children.num_reporters ();
   }
-  
-  tracker_type::citer find (const child& c) 
+
+  tracker_type::citer find (const child& c)
   {
     return std::find_if (m_children.begin (), m_children.end (),
                          [&c](const child& x) { return &x == &c; });
@@ -377,7 +377,7 @@ public:
   {
     if (&other != this)
       {
-        m_reporter.copy_binding (other.m_reporter);
+        m_reporter.replace_binding (other.m_reporter);
         m_name = other.m_name;
       }
     return *this;
@@ -385,7 +385,7 @@ public:
 
   nonintruded_child_s& operator= (nonintruded_child_s&& other) noexcept
   {
-    m_reporter.transfer_binding (other.m_reporter);
+    m_reporter.replace_binding (std::move (other.m_reporter));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -404,7 +404,7 @@ public:
   {
     return x % 17;
   }
-  
+
   void rebind (nonintruded_parent_s& p);
 
 private:
@@ -430,11 +430,16 @@ public:
     : m_reporter (std::move (other.m_reporter), *this)
   { }
 
-  nonintruded_child& operator= (const nonintruded_child& other) = default;
+  nonintruded_child& operator= (const nonintruded_child& other)
+  {
+    if (&other != this)
+      m_reporter.replace_binding (other.m_reporter);
+    return *this;
+  }
 
   nonintruded_child& operator= (nonintruded_child&& other) noexcept
   {
-    m_reporter.transfer_binding (other.m_reporter);
+    m_reporter.replace_binding (std::move (other.m_reporter));
     return *this;
   }
 
@@ -442,7 +447,7 @@ public:
   {
     return o;
   }
-  
+
   std::size_t get_position (void) const noexcept
   {
     return m_reporter.get_position ();
@@ -473,7 +478,7 @@ public:
     : m_children (*this),
       m_name (std::move (s))
   { }
-  
+
   friend void nonintruded_child_s::rebind (nonintruded_parent_s&);
 
 //  child create (std::string s)
@@ -521,7 +526,7 @@ void nonintruded_child_s::rebind (nonintruded_parent_s& p)
 class self_parent
 {
 public:
-  
+
   self_parent (void) = delete;
 
   explicit self_parent (std::string name)
@@ -541,8 +546,8 @@ public:
   { }
 
   self_parent& operator= (const self_parent& other) = delete;
-  
-  
+
+
 //  ~self_parent (void)
 //  {
 ////    std::cout << "destroying " << m_name << std::endl;
@@ -559,7 +564,7 @@ public:
   {
     bind (l.m_tracker, r.m_tracker);
   }
-  
+
   std::size_t num_reporters (void) const noexcept
   {
     return m_tracker.num_reporters ();
@@ -567,7 +572,7 @@ public:
 
   self_parent& operator= (self_parent&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -581,10 +586,10 @@ public:
   }
 
 private:
-  
+
   multireporter<self_parent> m_tracker;
   std::string m_name;
-  
+
 };
 
 class anon_self_parent
@@ -610,10 +615,10 @@ public:
 
   anon_self_parent& operator= (anon_self_parent&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     return *this;
   }
-  
+
   void clear_tracker (void) noexcept
   {
     return m_tracker.wipe ();
@@ -648,12 +653,12 @@ public:
   { }
 
   anon1& operator= (const anon1& other) = delete;
-  
+
   void bind (anon2& r);
 
   anon1& operator= (anon1&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -693,12 +698,12 @@ public:
   {
     r.bind (*this);
   }
-  
+
   friend void anon1::bind (anon2& r);
 
   anon2& operator= (anon2&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -749,7 +754,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker = other.m_tracker;
+        m_tracker.replace_bindings (other.m_tracker);
         m_name = other.m_name;
       }
     return *this;
@@ -757,7 +762,7 @@ public:
 
   named1& operator= (named1&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -768,9 +773,9 @@ public:
   friend inline void
   bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
         std::initializer_list<std::reference_wrapper<named2>> n2s);
-  
+
   void bind (named2& n2);
-  
+
   template <typename ...Args>
   void bind (named2& n2, Args&... args)
   {
@@ -782,19 +787,19 @@ public:
   {
     return m_tracker.wipe ();
   }
-  
+
   multireporter<named1, named2>& get_tracker (void)
   {
     return m_tracker;
   }
-  
+
   std::size_t num_reporters (void) { return m_tracker.num_reporters (); }
-  
+
   const std::string& get_name (void) const noexcept { return m_name; }
 
   friend std::ostream& operator<< (std::ostream& o, const named1& p);
-  
-  std::string print (void) const noexcept 
+
+  std::string print (void) const noexcept
   {
     std::ostringstream oss {};
     oss << *this;
@@ -831,15 +836,15 @@ public:
   {
     if (&other != this)
       {
-        m_tracker = other.m_tracker;
+        m_tracker.replace_bindings (other.m_tracker);
         m_name = other.m_name;
       }
     return *this;
   }
-  
+
   named2& operator= (named2&& other) noexcept
   {
-    m_tracker = std::move (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -855,24 +860,24 @@ public:
   {
     return m_tracker.wipe ();
   }
-  
+
   multireporter<named2, named1>& get_tracker (void)
   {
     return m_tracker;
   }
-  
+
   void bind (named1& n1)
   {
     m_tracker.bind (n1.get_tracker ());
   }
-  
+
   template <typename ...Args>
   void bind (named1& n1, Args&... args)
   {
     bind (args...);
     bind (n1);
   }
-  
+
   std::size_t num_reporters (void) { return m_tracker.num_reporters (); }
 
   const std::string& get_name (void) const noexcept { return m_name; }
@@ -908,7 +913,7 @@ void bind (named1& n1, named2& n2)
   n1.bind (n2);
 }
 
-inline void 
+inline void
 bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
 {
   for (named1 *n1 : n1s)
@@ -917,7 +922,7 @@ bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
 }
 
 inline void
-bind (std::initializer_list<std::reference_wrapper<named1>> n1s, 
+bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
       std::initializer_list<std::reference_wrapper<named2>> n2s)
 {
   for (named1& n1 : n1s)
@@ -949,7 +954,7 @@ std::chrono::duration<double> perf_create (void)
 
   std::cout << "\nperf_create" << std::endl;
   std::cout <<   "___________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
@@ -962,10 +967,10 @@ std::chrono::duration<double> perf_create (void)
     {
       children.emplace_back (p.create ());
     }
-    
-  auto print_num_children = [&p, &q] (void) 
-    { 
-      std::cout << p.num_children () << "\n" 
+
+  auto print_num_children = [&p, &q] (void)
+    {
+      std::cout << p.num_children () << "\n"
                 << q.num_children () << "\n" << std::endl;
     };
 
@@ -974,7 +979,7 @@ std::chrono::duration<double> perf_create (void)
   q.transfer_from (p);
 
   print_num_children ();
-  
+
   p.transfer_from (q);
 
   print_num_children ();
@@ -1000,7 +1005,7 @@ std::chrono::duration<double> perf_create (void)
   q.transfer_from (p);
 
   print_num_children ();
-  
+
   p.transfer_from (q);
 
   print_num_children ();
@@ -1017,7 +1022,7 @@ std::chrono::duration<double> perf_access (void)
 
   std::cout << "\nperf_access" << std::endl;
   std::cout <<   "___________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
@@ -1050,10 +1055,10 @@ std::chrono::duration<double> perf_access (void)
 
 std::chrono::duration<double> test_multireporter (void)
 {
-  
+
   std::cout << "\ntest_multireporter" << std::endl;
   std::cout <<   "__________________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
@@ -1064,19 +1069,19 @@ std::chrono::duration<double> test_multireporter (void)
   bind (*p, *q);
   bind (*q, *r);
   bind (*r, *p);
-  
+
   std::cout << "initial state" << std::endl;
   std::cout << *p << std::endl;
   std::cout << *q << std::endl;
   std::cout << *r << std::endl;
-  
+
   std::cout << "remove p" << std::endl;
   p.reset ();
   std::cout << *q << std::endl;
   std::cout << *r << std::endl;
   std::cout << q->num_reporters () << std::endl;
   std::cout << r->num_reporters () << std::endl;
-  
+
   time t2 = clock::now ();
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
@@ -1086,15 +1091,15 @@ std::chrono::duration<double> perf_multireporter (void)
 
   std::cout << "\nperf_multireporter" << std::endl;
   std::cout <<   "__________________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
   constexpr std::size_t num_iter = 100 * multiplier;
-  
+
   std::vector<anon_self_parent> objs;
   objs.reserve (num_iter);
-  
+
   for (std::size_t i = 0; i < num_iter; ++i)
     {
       objs.emplace_back ();
@@ -1102,7 +1107,7 @@ std::chrono::duration<double> perf_multireporter (void)
       std::for_each (objs.begin (), --objs.end (),
                      [&b] (anon_self_parent& a)
                      {
-                       bind (a, b); 
+                       bind (a, b);
                      });
     }
 
@@ -1113,10 +1118,10 @@ std::chrono::duration<double> perf_multireporter (void)
 //      objs.emplace_back ();
 //      objs.back ().bind_all (*it++);
 //    }
-    
-  std::cout << objs.back () << std::endl;  
 
-  std::for_each (objs.begin (), objs.end (), 
+  std::cout << objs.back () << std::endl;
+
+  std::for_each (objs.begin (), objs.end (),
                  [] (anon_self_parent& a) { a.clear_tracker (); });
   objs.clear ();
 
@@ -1129,7 +1134,7 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
 
   std::cout << "\nperf_disparate_multireporter" << std::endl;
   std::cout <<   "____________________________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
@@ -1159,7 +1164,7 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
                      });
       a1s.back ().bind (a2s.back ());
     }
-    
+
   std::cout << a1s.back () << std::endl;
   std::cout << a2s.back () << std::endl;
 
@@ -1167,10 +1172,10 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
                  [] (anon1& a) { a.clear_tracker (); });
   std::for_each (a2s.begin (), a2s.end (),
                  [] (anon2& a) { a.clear_tracker (); });
-  
+
   std::cout << a1s.back () << std::endl;
   std::cout << a2s.back () << std::endl;
-  
+
   a1s.clear ();
   a2s.clear ();
 
@@ -1180,18 +1185,18 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
 
 std::chrono::duration<double> test_disparate_multireporter (void)
 {
-  
+
   std::cout << "\ntest_disparate_multireporter" << std::endl;
   std::cout <<   "____________________________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
 
-  std::unique_ptr<named1> n1_1 (new named1 ("n1_1")), 
-                          n1_2 (new named1 ("n1_2")), 
+  std::unique_ptr<named1> n1_1 (new named1 ("n1_1")),
+                          n1_2 (new named1 ("n1_2")),
                           n1_3 (new named1 ("n1_3"));
-  
+
   std::unique_ptr<named2> n2_1 (new named2 ("n2_1")),
                           n2_2 (new named2 ("n2_2")),
                           n2_3 (new named2 ("n2_3"));
@@ -1224,19 +1229,19 @@ std::chrono::duration<double> test_disparate_multireporter (void)
 
   std::cout << "copy ctor (ptr): " << *ptr << std::endl;
   print_all ();
-  
+
   // move constructor
   std::unique_ptr<named1> (new named1 (std::move (*n1_2))).swap (ptr);
 
   std::cout << "move ctor (ptr): " << *ptr << std::endl;
   print_all ();
-  
+
   // copy assignment operator
   *ptr = *n1_3;
 
   std::cout << "copy assign (ptr): " << *ptr << std::endl;
   print_all ();
-  
+
 //  std::cout << ptr.get () << std::endl;
 //  std::cout << n1_1.get () << std::endl;
 //  std::cout << n1_2.get () << std::endl;
@@ -1244,7 +1249,7 @@ std::chrono::duration<double> test_disparate_multireporter (void)
 //  std::cout << n2_1.get () << std::endl;
 //  std::cout << n2_2.get () << std::endl;
 //  std::cout << n2_3.get () << std::endl << std::endl;
-  
+
   // move assignment operator
   *ptr = std::move (*n1_1);
 
@@ -1264,15 +1269,15 @@ std::chrono::duration<double> test_binding (void)
 
   std::cout << "\ntest_binding" << std::endl;
   std::cout <<   "____________" << std::endl;
-  
+
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
   time t1 = clock::now ();
 
-  std::unique_ptr<named1> n1_1 (new named1 ("n1_1")), 
-                          n1_2 (new named1 ("n1_2")), 
+  std::unique_ptr<named1> n1_1 (new named1 ("n1_1")),
+                          n1_2 (new named1 ("n1_2")),
                           n1_3 (new named1 ("n1_3"));
-  
+
   std::unique_ptr<named2> n2_1 (new named2 ("n2_1")),
                           n2_2 (new named2 ("n2_2")),
                           n2_3 (new named2 ("n2_3"));
@@ -1280,7 +1285,7 @@ std::chrono::duration<double> test_binding (void)
   n1_1->bind (*n2_1, *n2_2, *n2_3);
   bind (*n1_1, *n2_1);
   n1_1->bind (*n2_1);
-  
+
   n2_1->bind (*n1_1, *n1_2, *n1_3, *n1_3);
 
 //  n1_1.bind (n2_1, n2_2, n2_3);
@@ -1312,7 +1317,7 @@ std::chrono::duration<double> test_binding (void)
   std::cout << n2_1->num_reporters () << " ";
   std::cout << n2_2->num_reporters () << " ";
   std::cout << n2_3->num_reporters () << std::endl << std::endl;
-  
+
   time t2 = clock::now ();
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
@@ -1358,33 +1363,33 @@ std::chrono::duration<double> test_reporter (void)
   std::cout << *p << std::endl;
 
   Parent q ("parent2");
-  
+
   Child qc_1 = q.create ("q_child1");
   Child qc_2 = q.create ("q_child2");
   Child qc_3 = q.create ("q_child3");
 
   std::cout << std::endl;
-  
-  auto print_pq = [&p, &q] (void) 
+
+  auto print_pq = [&p, &q] (void)
   {
     std::cout << *p << std::endl;
     std::cout << q << std::endl << std::endl;
   };
 
   print_pq ();
-  
+
   // copy assign q -> p
   std::cout << "copy assign q -> p" << std::endl;
   qc_2 = children[5];
 
   print_pq ();
-  
+
   // move assign p -> q
   std::cout << "move assign p -> q" << std::endl;
   children[0] = std::move (qc_3);
 
   print_pq ();
-  
+
   // rebind p -> q
   std::cout << "rebind p -> q" << std::endl;
   children[1].rebind (q);
@@ -1406,7 +1411,7 @@ std::chrono::duration<double> test_reporter (void)
 int main()
 {
   try
-  {      
+  {
     std::cout << test_reporter<child, parent> ().count () << std::endl;
     std::cout
       << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count ()
@@ -1421,7 +1426,7 @@ int main()
     std::cout
       << perf_access<nonintruded_child, nonintruded_parent> ().count ()
       << std::endl;
-    
+
 
     plf::list<int> x = {1, 2, 3, 4};
     plf::list<int>::iterator last = --x.end ();
@@ -1437,10 +1442,10 @@ int main()
 
     test_disparate_multireporter ();
     test_binding ();
-    
+
     tracker<tag::standalone,  reporter<>> sa_tkr;
     reporter<tag::standalone, tracker<>> sa_rptr (tag::bind, sa_tkr);
-    
+
     std::cout << &sa_rptr << std::endl;
     std::cout << &sa_tkr << std::endl << std::endl;
 
@@ -1448,21 +1453,25 @@ int main()
     std::cout << &sa_rptr.get_remote () << std::endl;
     std::cout << sa_tkr.num_reporters () << std::endl;
     std::cout << &sa_tkr.front () << std::endl << std::endl;
-    
+
+    assert (sa_rptr.get_maybe_remote ().has_value ());
+
     sa_rptr.debind ();
+
+    assert (! sa_rptr.get_maybe_remote ().has_value ());
 
     std::cout << sa_rptr.has_remote () << std::endl;
     std::cout << sa_tkr.num_reporters () << std::endl << std::endl;
-    
+
     tracker<parent, reporter<>, tag::intrusive> xp;
-    
+
   }
   catch (std::exception &e)
   {
     std::cout << e.what () << std::endl;
     return 1;
-  } 
-                                                                               
+  }
+
   std::cout << "itracker : ireporter  :" << sizeof (tracker<child,  reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
   std::cout << "itracker : nreporter  :" << sizeof (tracker<child,  reporter<parent>,                  tag::intrusive>)    << std::endl;
   std::cout << "itracker : itracker   :" << sizeof (tracker<child,  tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
@@ -1479,8 +1488,8 @@ int main()
   std::cout << "nreporter : nreporter :" << sizeof (reporter<child, reporter<parent>,                  tag::nonintrusive>) << std::endl;
   std::cout << "nreporter : itracker  :" << sizeof (reporter<child, tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
   std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, tracker <parent>,                  tag::nonintrusive>) << std::endl;
-  
+
   std::cout << "iter  :" << sizeof (tracker<child, tag::intrusive::reporter<parent>, tag::nonintrusive>::iter) << std::endl;
-  
+
   return 0;
 }
