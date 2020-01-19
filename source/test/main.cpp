@@ -26,7 +26,7 @@ struct ichild_r : reporter<ichild_r<RemoteTag>, RemoteTag, tag::intrusive>
   ichild_r (void) = default;
 
   explicit ichild_r (typename base::remote_interface_type& remote)
-    : base (tag::bind, remote)
+    : base (remote.create_interface ())
   { }
 };
 
@@ -38,7 +38,7 @@ struct nchild_r
   nchild_r (void) = default;
 
   explicit nchild_r (typename reporter_type::remote_interface_type& remote)
-    : m_reporter (*this, remote)
+    : m_reporter (remote.create_interface (*this))
   { }
 
   nchild_r (nchild_r&& other) noexcept
@@ -118,7 +118,7 @@ template <template <typename ...> class Child, template <typename ...> typename 
 struct iparent_t
   : base_type<tag::intrusive::tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
 {
-  
+
   using child_type = Child<tag::intrusive::tracker<iparent_t>>;
 
   iparent_t (void) = default;
@@ -217,7 +217,7 @@ public:
   { }
 
   child (const child& o)
-    : base (o),
+    : base (o.clone ()),
       m_name (o.m_name)
   { }
 
@@ -230,7 +230,7 @@ public:
   {
     if (&other != this)
       {
-        reporter::operator= (other);
+        reporter::operator= (other.clone ());
         m_name = other.m_name;
       }
     return *this;
@@ -364,7 +364,7 @@ public:
   { }
 
   nonintruded_child_s (const nonintruded_child_s& other)
-    : m_reporter (other.m_reporter, *this),
+    : m_reporter (other.m_reporter.clone (), *this),
       m_name (other.m_name)
   { }
 
@@ -423,7 +423,7 @@ public:
   { }
 
   nonintruded_child (const nonintruded_child& other)
-    : m_reporter (other.m_reporter, *this)
+    : m_reporter (other.m_reporter.clone (), *this)
   { }
 
   nonintruded_child (nonintruded_child&& other) noexcept
@@ -741,7 +741,7 @@ public:
   { }
 
   named1 (const named1& other)
-    : m_tracker (other.m_tracker, *this),
+    : m_tracker (other.m_tracker.clone (), *this),
       m_name (other.m_name)
   { }
 
@@ -823,7 +823,7 @@ public:
   { }
 
   named2 (const named2& other)
-    : m_tracker (other.m_tracker, *this),
+    : m_tracker (other.m_tracker.clone (), *this),
       m_name (other.m_name)
   { }
 
