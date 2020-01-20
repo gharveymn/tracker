@@ -967,43 +967,15 @@ namespace gch
         }
       }
 
-      //! disabled for reporters
-      template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
-      reporter_common (gch::tag::bind_t, remote_interface_type& remote) = delete;
-
-      //! enabled for trackers
-      template <typename Tag = remote_tag, tag::enable_if_tracker_b<Tag> = true>
-      constexpr reporter_common (gch::tag::bind_t, remote_interface_type& remote) noexcept
-        : base (gch::tag::bind, remote)
-      { }
-
-      //! disabled for reporters
-      template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
-      reporter_common clone (void) const = delete;
-
-      //! enabled for trackers
-      template <typename Tag = remote_tag, tag::enable_if_tracker_b<Tag> = true>
-      reporter_common clone (void) const
+      template <typename ...Args>
+      GCH_NODISCARD
+      remote_interface_type create_interface (Args&&... args)
       {
-        if (has_remote ())
-          return reporter_common (gch::tag::bind, get_remote_interface ());
-        return { };
-      }
-
-      template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
-      local_interface_type& replace_binding (const local_interface_type& other) = delete;
-
-      template <typename Tag = remote_tag, tag::enable_if_tracker_b<Tag> = true>
-      local_interface_type& replace_binding (const local_interface_type& other)
-      {
-        if (&other != this)
-        {
-          if (other.is_tracked ())
-            base::rebind (other.get_remote_base ());
-          else
-            base::debind ();
-        }
-        return static_cast<local_interface_type&> (*this);
+        remote_interface_type ret (std::forward<Args> (args)...);
+        base tmp = ret.exchange_reporter ({ *this });
+        base::reset_remote_tracking ();
+        base::operator= (tmp);
+        return ret;
       }
 
       local_interface_type& replace_binding (local_interface_type&& other)
@@ -1052,18 +1024,51 @@ namespace gch
         return static_cast<local_interface_type&> (base::rebind (new_remote));
       }
 
-      template <typename ...Args>
-      remote_interface_type create_interface (Args&&... args)
+      //! disabled for reporters
+
+      template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
+      reporter_common (gch::tag::bind_t, remote_interface_type& remote) = delete;
+
+      template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
+      reporter_common clone (void) const = delete;
+
+      template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
+      local_interface_type& replace_binding (const local_interface_type& other) = delete;
+
+      //! enabled for trackers
+
+      template <typename Tag = remote_tag, tag::enable_if_tracker_b<Tag> = true>
+      constexpr reporter_common (gch::tag::bind_t, remote_interface_type& remote) noexcept
+        : base (gch::tag::bind, remote)
+      { }
+
+      template <typename Tag = remote_tag,
+                tag::enable_if_tracker_b<Tag> = true>
+      GCH_NODISCARD
+      reporter_common clone (void) const
       {
-        remote_interface_type ret (std::forward<Args> (args)...);
-        base tmp = ret.exchange_reporter ({ *this });
-        base::reset_remote_tracking ();
-        base::operator= (tmp);
-        return ret;
+        if (has_remote ())
+          return reporter_common (gch::tag::bind, get_remote_interface ());
+        return { };
+      }
+
+      template <typename Tag = remote_tag,
+                tag::enable_if_tracker_b<Tag> = true>
+      local_interface_type& replace_binding (const local_interface_type& other)
+      {
+        if (&other != this)
+        {
+          if (other.is_tracked ())
+            base::rebind (other.get_remote_base ());
+          else
+            base::debind ();
+        }
+        return static_cast<local_interface_type&> (*this);
       }
 
     private:
 
+      GCH_NODISCARD
       remote_reporter_type exchange_reporter (local_reporter_type rep)
       {
         base::operator= (rep);
@@ -1096,8 +1101,6 @@ namespace gch
       using remote_base_tag       = typename remote_tag::base;
 
       using remote_interface_type = tag::remote_interface_t<local_tag, remote_tag>;
-
-      //      friend remote_interface_type;
 
       using remote_common_type    = tag::common_t<remote_interface_type>;
 
@@ -1191,7 +1194,7 @@ namespace gch
 
       protected:
 
-        reporter_iter get_iterator (void) const noexcept
+        /* implicit */ operator reporter_iter (void) const noexcept
         {
           return m_iter;
         }
@@ -1252,7 +1255,7 @@ namespace gch
         ~citer           (void)               = default;
 
         constexpr /* implicit */ citer (iter it) noexcept
-          : base (it.get_iterator ())
+          : base (rptr_iter (it))
         { }
 
         constexpr const remote_type& operator* (void) const noexcept
@@ -1272,16 +1275,14 @@ namespace gch
 
       }; // citer
 
-      // using iter   = remote_iterator<rptr_iter, remote_interface_type, remote_type>;
-      // using citer  = remote_iterator<rptr_citer, remote_interface_type, const remote_type>;
       using riter  = std::reverse_iterator<iter>;
       using criter = std::reverse_iterator<citer>;
       using ref    = remote_type&;
       using cref   = const remote_type&;
 
-      using init_list = std::initializer_list<std::reference_wrapper<remote_interface_type>>;
+      using init_list = std::initializer_list<
+        std::reference_wrapper<remote_interface_type>>;
 
-      using base::base;
       using base::clear;
       using base::wipe;
       using base::num_reporters;
@@ -1305,6 +1306,7 @@ namespace gch
       }
 
       template <typename ...Args>
+      GCH_NODISCARD
       remote_interface_type create_interface (Args&&... args)
       {
         remote_interface_type ret (std::forward<Args> (args)...);
@@ -1345,16 +1347,27 @@ namespace gch
 
       GCH_NODISCARD bool   has_remotes   (void) const noexcept { return ! base::rptrs_empty (); }
 
+      GCH_NODISCARD
       GCH_CPP17_CONSTEXPR std::size_t get_offset (citer pos) const noexcept
       {
         return base::base_get_offset (pos);
+      }
+
+      iter debind (citer pos)
+      {
+        return base::base_debind (pos);
+      }
+
+      iter debind (citer first, citer last)
+      {
+        return base::base_debind (first, last);
       }
 
       //! transfers all bindings from `other`; no overwriting
       GCH_CPP14_CONSTEXPR iter
       transfer_bindings (local_interface_type& other, citer after) noexcept
       {
-        return base::base_transfer_bindings (other, after.get_iterator ());
+        return base::base_transfer_bindings (other, after);
       }
 
       GCH_CPP14_CONSTEXPR iter
@@ -1363,16 +1376,26 @@ namespace gch
         return transfer_bindings (other, cend ());
       }
 
-      template <typename ...Args>
       GCH_CPP14_CONSTEXPR iter
-      transfer_bindings (local_interface_type&& other, Args&&... args) noexcept
+      transfer_bindings (local_interface_type&& other, citer after) noexcept
       {
-        return transfer_bindings (other, std::forward<Args> (args)...);
+        return transfer_bindings (other, after);
       }
 
-      local_interface_type& replace_bindings (local_interface_type&& other)
+      GCH_CPP14_CONSTEXPR iter
+      transfer_bindings (local_interface_type&& other) noexcept
+      {
+        return transfer_bindings (other, cend ());
+      }
+
+      local_interface_type& transfer_replace_bindings (local_interface_type&& other)
       {
         return static_cast<local_interface_type&> (base::operator= (std::move (other)));
+      }
+
+      local_interface_type& transfer_replace_bindings (local_interface_type& other)
+      {
+        return transfer_replace_bindings (std::move (other));
       }
 
       //! disabled for reporters
@@ -1388,6 +1411,10 @@ namespace gch
       template <typename Tag = remote_tag,
                 tag::enable_if_reporter_b<Tag> = false>
       local_interface_type& replace_bindings (const local_interface_type& other) = delete;
+
+      template <typename Tag = remote_tag,
+        tag::enable_if_reporter_b<Tag> = false>
+      local_interface_type& copy_replace_bindings (const local_interface_type& other) = delete;
 
       template <typename Tag = remote_tag,
                 tag::enable_if_reporter_b<Tag> = false>
@@ -1407,7 +1434,7 @@ namespace gch
       template <typename Tag = remote_tag,
                 tag::enable_if_tracker_b<Tag> = true>
       tracker_common (citer first, citer last)
-        : base (first.get_iterator (), last.get_iterator ())
+        : base (first, last)
       { }
 
       template <typename Tag = remote_tag,
@@ -1417,25 +1444,25 @@ namespace gch
         if (init.size () == 0)
           return;
 
-        const rptr_iter pivot = base_bind_back (*init.begin ());
+        const rptr_iter pivot = base::base_bind_back (*init.begin ());
         try
         {
           std::for_each (++init.begin (), init.end (),
                          [this] (remote_interface_type& remote)
                          {
-                           base_bind_back (remote);
+                           base::base_bind_back (remote);
                          });
         }
         catch (...)
         {
-          base_debind (pivot, init.end ());
+          base::base_debind (pivot, init.end ());
           throw;
         }
       }
 
       template <typename Tag = remote_tag,
                 tag::enable_if_tracker_b<Tag> = true>
-      local_interface_type& replace_bindings (const local_interface_type& other)
+      local_interface_type& copy_replace_bindings (const local_interface_type& other)
       {
         if (&other != this)
         {
@@ -1454,6 +1481,7 @@ namespace gch
 
       template <typename Tag = remote_tag,
                 tag::enable_if_tracker_b<Tag> = true>
+      GCH_NODISCARD
       tracker_common clone (void) const
       {
         return tracker_common (begin (), end ());
@@ -1484,6 +1512,7 @@ namespace gch
 
     private:
 
+      GCH_NODISCARD
       remote_reporter_type exchange_reporter (local_reporter_type rep)
       {
         return { *this, rptrs_emplace (base::rptrs_end (), rep) };
