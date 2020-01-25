@@ -26,7 +26,7 @@ struct ichild_r : reporter<ichild_r<RemoteTag>, RemoteTag, tag::intrusive>
   ichild_r (void) = default;
 
   explicit ichild_r (typename base::remote_interface_type& remote)
-    : base (remote.create_interface ())
+    : base (tag::bind, remote)
   { }
 };
 
@@ -38,7 +38,7 @@ struct nchild_r
   nchild_r (void) = default;
 
   explicit nchild_r (typename reporter_type::remote_interface_type& remote)
-    : m_reporter (remote.create_interface (*this))
+    : m_reporter (*this, remote)
   { }
 
   nchild_r (nchild_r&& other) noexcept
@@ -72,16 +72,20 @@ struct nchild_t
     : m_tracker (*this)
   { }
 
+  nchild_t (nchild_t&& other) noexcept
+    : m_tracker (std::move (other.m_tracker), *this)
+  { }
+
   tracker_type m_tracker;
 
 };
 
 template <typename LocalTag, template <typename ...> class Child,
-          template <typename ...> typename TRemoteTag>
+          template <typename ...> class TRemoteTag>
 using base_type = detail::tag::remote_interface_t<TRemoteTag<Child<LocalTag>>, LocalTag>;
 
 template <template <typename ...> class Child,
-          template <typename ...> typename TRemoteTag>
+          template <typename ...> class TRemoteTag>
 struct iparent_r
   : base_type<tag::intrusive::reporter<iparent_r<Child, TRemoteTag>>, Child, TRemoteTag>
 {
@@ -90,14 +94,9 @@ struct iparent_r
 
   iparent_r (void) = default;
 
-  child_type create (void)
-  {
-    return child_type (*this);
-  }
-
 };
 
-template <template <typename ...> class Child, template <typename ...> typename TRemoteTag>
+template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
 struct nparent_r
 {
 
@@ -105,16 +104,11 @@ struct nparent_r
 
   nparent_r (void) = default;
 
-  child_type create (void)
-  {
-    return child_type (m_reporter);
-  }
-
   base_type<reporter<nparent_r>, Child, TRemoteTag> m_reporter;
 
 };
 
-template <template <typename ...> class Child, template <typename ...> typename TRemoteTag>
+template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
 struct iparent_t
   : base_type<tag::intrusive::tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
 {
@@ -130,7 +124,7 @@ struct iparent_t
 
 };
 
-template <template <typename ...> class Child, template <typename ...> typename TRemoteTag>
+template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
 struct nparent_t
 {
 
@@ -1407,6 +1401,17 @@ std::chrono::duration<double> test_reporter (void)
   time t2 = clock::now ();
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
+
+struct mix
+  : reporter<mix, tracker<>, tag::intrusive>,
+    tracker<mix, tracker<>, tag::intrusive>
+{
+  mix (tracker<tag::standalone, reporter<mix, tag::intrusive>>& tkr1,
+       tracker<tag::standalone, tracker<mix, tag::intrusive>>& tkr2)
+    : reporter (tag::bind, tkr1),
+      tracker  (tag::bind, { tkr2 })
+  { }
+};
 
 int main()
 {

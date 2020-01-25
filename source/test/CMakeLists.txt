@@ -8,7 +8,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   SET(COMPILE_OPTS -fno-rtti -Wall -Wextra)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  SET(COMPILE_OPTS /GR- /W4)
+  SET(COMPILE_OPTS /GR-)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
       
 endif()
@@ -19,7 +19,7 @@ if (UNIX)
 endif()
 
 SET_TARGET_PROPERTIES(test_tracker PROPERTIES
-                      CXX_STANDARD          20
+                      CXX_STANDARD          11
                       CXX_STANDARD_REQUIRED NO
                       CXX_EXTENSIONS        NO
                       COMPILE_OPTIONS       "${COMPILE_OPTS}"
