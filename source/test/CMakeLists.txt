@@ -20,7 +20,7 @@ endif()
 
 SET_TARGET_PROPERTIES(test_tracker PROPERTIES
                       CXX_STANDARD          11
-                      CXX_STANDARD_REQUIRED NO
+                      CXX_STANDARD_REQUIRED YES
                       CXX_EXTENSIONS        NO
                       COMPILE_OPTIONS       "${COMPILE_OPTS}"
                       LINK_OPTIONS          "${LINK_OPTS}")

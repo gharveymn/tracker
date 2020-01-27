@@ -1403,11 +1403,11 @@ std::chrono::duration<double> test_reporter (void)
 }
 
 struct mix
-  : reporter<mix, remote::tracker<>, tag::intrusive>,
-    tracker<mix, remote::tracker<>, tag::intrusive>
+  : reporter<mix, remote::standalone_tracker<>, tag::intrusive>,
+    tracker<mix, remote::standalone_tracker<>, tag::intrusive>
 {
-  mix (tracker<tag::standalone, remote::reporter<mix, tag::intrusive>>& tkr1,
-       tracker<tag::standalone, remote::tracker<mix, tag::intrusive>>& tkr2)
+  mix (standalone_tracker<remote::reporter<mix, tag::intrusive>>& tkr1,
+       standalone_tracker<remote::tracker<mix, tag::intrusive>>& tkr2)
     : reporter (tag::bind, tkr1),
       tracker  (tag::bind, { tkr2 })
   { }
@@ -1448,8 +1448,8 @@ int main()
     test_disparate_multireporter ();
     test_binding ();
 
-    tracker<tag::standalone,  remote::reporter<>> sa_tkr;
-    reporter<tag::standalone, remote::tracker<>> sa_rptr (tag::bind, sa_tkr);
+    standalone_tracker<remote::standalone_reporter<>> sa_tkr;
+    standalone_reporter<remote::standalone_tracker<>> sa_rptr (tag::bind, sa_tkr);
     
     std::cout << &sa_rptr << std::endl;
     std::cout << &sa_tkr << std::endl << std::endl;
@@ -1468,8 +1468,8 @@ int main()
     std::cout << sa_rptr.has_remote () << std::endl;
     std::cout << sa_tkr.num_reporters () << std::endl << std::endl;
 
-    tracker<tag::standalone,  remote::reporter<>, tag::nonintrusive, std::list> sa_tkr_std;
-    reporter<tag::standalone, remote::tracker<tag::standalone, tag::nonintrusive, std::list>> sa_rptr_std (tag::bind, sa_tkr_std);
+    standalone_tracker<remote::standalone_reporter<>, std::list> sa_tkr_std;
+    standalone_reporter<remote::standalone_tracker<std::list>> sa_rptr_std (tag::bind, sa_tkr_std);
 
     std::cout << &sa_rptr_std << std::endl;
     std::cout << &sa_tkr_std << std::endl << std::endl;
