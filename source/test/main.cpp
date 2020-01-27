@@ -81,11 +81,11 @@ struct nchild_t
 };
 
 template <typename LocalTag, template <typename ...> class Child,
-          template <typename ...> class TRemoteTag>
+  template <typename, template <typename ...> class = plf::list> class TRemoteTag>
 using base_type = typename LocalTag::template interface_type<TRemoteTag<Child<LocalTag>>>;
 
 template <template <typename ...> class Child,
-          template <typename ...> class TRemoteTag>
+  template <typename, template <typename ...> class> class TRemoteTag>
 struct iparent_r
   : base_type<tag::intrusive::reporter<iparent_r<Child, TRemoteTag>>, Child, TRemoteTag>
 {
@@ -96,7 +96,7 @@ struct iparent_r
 
 };
 
-template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
+template <template <typename ...> class Child, template <typename, template <typename ...> class> class TRemoteTag>
 struct nparent_r
 {
 
@@ -108,7 +108,7 @@ struct nparent_r
 
 };
 
-template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
+template <template <typename ...> class Child, template <typename, template <typename ...> class> class TRemoteTag>
 struct iparent_t
   : base_type<tag::intrusive::tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
 {
@@ -124,7 +124,7 @@ struct iparent_t
 
 };
 
-template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
+template <template <typename ...> class Child, template <typename, template <typename ...> class> class TRemoteTag>
 struct nparent_t
 {
 
@@ -1450,7 +1450,7 @@ int main()
 
     tracker<tag::standalone,  remote::reporter<>> sa_tkr;
     reporter<tag::standalone, remote::tracker<>> sa_rptr (tag::bind, sa_tkr);
-
+    
     std::cout << &sa_rptr << std::endl;
     std::cout << &sa_tkr << std::endl << std::endl;
 
@@ -1467,6 +1467,26 @@ int main()
 
     std::cout << sa_rptr.has_remote () << std::endl;
     std::cout << sa_tkr.num_reporters () << std::endl << std::endl;
+
+    tracker<tag::standalone,  remote::reporter<>, tag::nonintrusive, std::list> sa_tkr_std;
+    reporter<tag::standalone, remote::tracker<tag::standalone, tag::nonintrusive, std::list>> sa_rptr_std (tag::bind, sa_tkr_std);
+
+    std::cout << &sa_rptr_std << std::endl;
+    std::cout << &sa_tkr_std << std::endl << std::endl;
+
+    std::cout << sa_rptr_std.has_remote () << std::endl;
+    std::cout << &sa_rptr_std.get_remote () << std::endl;
+    std::cout << sa_tkr_std.num_reporters () << std::endl;
+    std::cout << &sa_tkr_std.front () << std::endl << std::endl;
+
+    assert (sa_rptr_std.get_maybe_remote ().has_value ());
+
+    sa_rptr_std.debind ();
+
+    assert (! sa_rptr_std.get_maybe_remote ().has_value ());
+
+    std::cout << sa_rptr_std.has_remote () << std::endl;
+    std::cout << sa_tkr_std.num_reporters () << std::endl << std::endl;
 
     tracker<parent, remote::reporter<>, tag::intrusive> xp;
 

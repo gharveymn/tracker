@@ -59,7 +59,7 @@ namespace gch
     template <typename LocalBaseTag, typename RemoteBaseTag>
     class reporter_base;
 
-    template <typename RemoteBaseTag>
+    template <typename RemoteBaseTag, template <typename ...> class Backend>
     class tracker_base;
 
     template <typename Interface>
@@ -85,7 +85,25 @@ namespace gch
         using type = detail::reporter_base<LocalBaseTag, RemoteBaseTag>;
       };
 
-      struct tracker_base
+      template <typename>
+      struct void_t;
+
+      template <template <typename ...> class Backend = void_t>
+      struct tracker_base;
+
+      template <>
+      struct tracker_base<void_t>
+      {
+        tracker_base            (void)                          = delete;
+        tracker_base            (const tracker_base&)           = delete;
+        tracker_base            (tracker_base&& other) noexcept = delete;
+        tracker_base& operator= (const tracker_base&)           = delete;
+        tracker_base& operator= (tracker_base&& other) noexcept = delete;
+        ~tracker_base           (void)                          = delete;
+      };
+
+      template <template <typename ...> class Backend>
+      struct tracker_base : tracker_base<>
       {
         tracker_base            (void)                          = delete;
         tracker_base            (const tracker_base&)           = delete;
@@ -97,7 +115,7 @@ namespace gch
         using base = tracker_base;
 
         template <typename LocalBaseTag, typename RemoteBaseTag>
-        using type = detail::tracker_base<RemoteBaseTag>;
+        using type = detail::tracker_base<RemoteBaseTag, Backend>;
       };
 
       // for asymmetric constructors
@@ -112,7 +130,8 @@ namespace gch
 
   template <typename Local        = tag::standalone,
             typename RemoteTag    = tag::nonintrusive,
-            typename IntrusiveTag = tag::nonintrusive>
+            typename IntrusiveTag = tag::nonintrusive,
+            template <typename ...> class Backend = plf::list>
   class tracker;
 
   namespace remote
@@ -122,7 +141,8 @@ namespace gch
     struct reporter;
 
     template <typename Parent       = tag::standalone,
-              typename IntrusiveTag = tag::nonintrusive>
+              typename IntrusiveTag = tag::nonintrusive,
+              template <typename ...> class Backend = plf::list>
     struct tracker;
 
     template <>
@@ -136,26 +156,23 @@ namespace gch
 
       template <typename LocalTag>
       using interface_type = gch::reporter<gch::reporter<gch::tag::standalone, LocalTag>,
-                                           LocalTag,
-                                           gch::tag::intrusive>;
+                                           LocalTag, gch::tag::intrusive>;
 
       template <typename LocalTag>
       using common_type = detail::reporter_common<interface_type<LocalTag>>;
     };
 
-    template <>
-    struct tracker<>
-      : detail::tag::tracker_base
+    template <template <typename ...> class Backend>
+    struct tracker<gch::tag::standalone, gch::tag::nonintrusive, Backend>
+      : detail::tag::tracker_base<Backend>
     {
       using reduced_tag = tracker;
 
       template <typename LocalTag>
-      using parent_type = gch::tracker<gch::tag::standalone, LocalTag>;
+      using parent_type = gch::tracker<gch::tag::standalone, LocalTag, tag::nonintrusive, Backend>;
 
       template <typename LocalTag>
-      using interface_type = gch::tracker<gch::tracker<gch::tag::standalone, LocalTag>,
-                                           LocalTag,
-                                           gch::tag::intrusive>;
+      using interface_type = gch::tracker<parent_type<LocalTag>, LocalTag, gch::tag::intrusive, Backend>;
 
       template <typename LocalTag>
       using common_type = detail::tracker_common<interface_type<LocalTag>>;
@@ -177,9 +194,10 @@ namespace gch
       using common_type = detail::reporter_common<interface_type<LocalTag>>;
     };
 
-    template <typename Parent, typename IntrusiveTag>
+    template <typename Parent, typename IntrusiveTag,
+              template <typename ...> class Backend>
     struct tracker
-      : detail::tag::tracker_base
+      : detail::tag::tracker_base<Backend>
     {
       using reduced_tag = tracker;
 
@@ -187,7 +205,7 @@ namespace gch
       using parent_type = Parent;
 
       template <typename LocalTag>
-      using interface_type = gch::tracker<Parent, LocalTag, IntrusiveTag>;
+      using interface_type = gch::tracker<Parent, LocalTag, IntrusiveTag, Backend>;
 
       template <typename LocalTag>
       using common_type = detail::tracker_common<interface_type<LocalTag>>;
@@ -201,12 +219,12 @@ namespace gch
       using reduced_tag = remote::reporter<>;
     };
 
-    template <typename RemoteTag>
-    struct tracker<gch::tracker<gch::tag::standalone, RemoteTag, gch::tag::nonintrusive>,
-                   gch::tag::intrusive>
-      : remote::tracker<>
+    template <typename RemoteTag, template <typename ...> class Backend>
+    struct tracker<gch::tracker<gch::tag::standalone, RemoteTag, gch::tag::nonintrusive, Backend>,
+                   gch::tag::intrusive, Backend>
+      : remote::tracker<gch::tag::standalone, gch::tag::nonintrusive, Backend>
     {
-      using reduced_tag = remote::tracker<>;
+      using reduced_tag = remote::tracker<gch::tag::standalone, gch::tag::nonintrusive, Backend>;
     };
 
   }
@@ -216,24 +234,6 @@ namespace gch
   {
     namespace tag
     {
-      template <typename Tag>
-      struct base_tag;
-
-      template <typename ...Ts>
-      struct base_tag<reporter<Ts...>>
-      {
-        using type = tag::reporter_base;
-      };
-
-      template <typename ...Ts>
-      struct base_tag<tracker<Ts...>>
-      {
-        using type = tag::tracker_base;
-      };
-
-      template <typename Tag>
-      using base_tag_t = typename base_tag<Tag>::type;
-
       template <typename Tag, typename = void>
       struct is_reporter : std::false_type { };
 
@@ -250,7 +250,7 @@ namespace gch
       template <typename Tag>
       struct is_tracker<Tag,
         typename std::enable_if<
-          std::is_base_of<detail::tag::tracker_base, Tag>::value>::type>
+          std::is_base_of<detail::tag::tracker_base<>, Tag>::value>::type>
         : std::true_type
       { };
 
@@ -267,13 +267,10 @@ namespace gch
       using enable_if_tracker_b = enable_if_tracker_t<Tag, bool>;
     }
 
-    template <typename ...Ts>
-    using list = plf::list<Ts...>;
-
     template <typename LocalBaseTag, typename RemoteBaseTag>
     class reporter_base;
 
-    template <typename RemoteBaseTag>
+    template <typename RemoteBaseTag, template <typename ...> class Backend>
     class tracker_base;
 
     template <typename Derived, typename RemoteBase>
@@ -423,24 +420,24 @@ namespace gch
 
     };
 
-    template <typename LocalBaseTag>
-    class reporter_base<LocalBaseTag, tag::tracker_base>
-      : public reporter_base_common<reporter_base<LocalBaseTag, tag::tracker_base>,
-                                    tracker_base<LocalBaseTag>>
+    template <typename LocalBaseTag, template <typename ...> class RemoteBackend>
+    class reporter_base<LocalBaseTag, tag::tracker_base<RemoteBackend>>
+      : public reporter_base_common<reporter_base<LocalBaseTag, tag::tracker_base<RemoteBackend>>,
+                                    tracker_base<LocalBaseTag, RemoteBackend>>
     {
     public:
 
     using local_base_tag       = LocalBaseTag;
-    using remote_base_tag      = tag::tracker_base;
-    using remote_base_type     = tracker_base<local_base_tag>;
+    using remote_base_tag      = tag::tracker_base<RemoteBackend>;
+    using remote_base_type     = tracker_base<local_base_tag, RemoteBackend>;
     using remote_reporter_type = reporter_base<remote_base_tag, local_base_tag>;
 
     using base = reporter_base_common<reporter_base, remote_base_type>;
 
     private:
 
-      using self_iter  = typename list<remote_reporter_type>::iterator;
-      using self_citer = typename list<remote_reporter_type>::const_iterator;
+      using self_iter  = typename RemoteBackend<remote_reporter_type>::iterator;
+      using self_citer = typename RemoteBackend<remote_reporter_type>::const_iterator;
 
     public:
 
@@ -540,20 +537,20 @@ namespace gch
 
     };
 
-    template <typename RemoteBaseTag>
+    template <typename RemoteBaseTag, template <typename ...> class Backend>
     class tracker_base_common
     {
-      using derived_type = tracker_base<RemoteBaseTag>;
+      using derived_type = tracker_base<RemoteBaseTag, Backend>;
     public:
 
-      using local_base_tag  = tag::tracker_base;
+      using local_base_tag  = tag::tracker_base<Backend>;
       using remote_base_tag = RemoteBaseTag;
 
     protected:
 
       // Store pointers to the base types. Downcast when needed.
       using reporter_type   = reporter_base<local_base_tag, remote_base_tag>;
-      using reporter_list   = list<reporter_type>;
+      using reporter_list   = Backend<reporter_type>;
       using rptr_iter       = typename reporter_list::iterator;
       using rptr_citer      = typename reporter_list::const_iterator;
       using rptr_riter      = typename reporter_list::reverse_iterator;
@@ -565,7 +562,7 @@ namespace gch
 
       using remote_base_type     = typename reporter_type::remote_base_type;
       using remote_reporter_type = typename reporter_type::remote_reporter_type;
-      using remote_reporter_list = list<remote_reporter_type>;
+      using remote_reporter_list = Backend<remote_reporter_type>;
       using remote_rptr_iter     = typename remote_reporter_list::iterator;
 
     public:
@@ -711,11 +708,15 @@ namespace gch
 
     };
 
-    template <>
-    class tracker_base<tag::reporter_base>
-      : public tracker_base_common<tag::reporter_base>
+    template <template <typename ...> class Backend>
+    class tracker_base<tag::reporter_base, Backend>
+      : public tracker_base_common<tag::reporter_base, Backend>
     {
     public:
+
+      using base = tracker_base_common<tag::reporter_base, Backend>;
+      using rptr_iter = typename base::rptr_iter;
+      using rptr_citer = typename base::rptr_citer;
 
       tracker_base            (void)                    = default;
       tracker_base            (const tracker_base&)     = delete;
@@ -736,11 +737,18 @@ namespace gch
     };
 
     //! Remote is one of the non-base classes defined here
-    template <>
-    class tracker_base<tag::tracker_base>
-      : public tracker_base_common<tag::tracker_base>
+    template <template <typename ...> class Backend,
+              template <typename ...> class RemoteBackend>
+    class tracker_base<tag::tracker_base<RemoteBackend>, Backend>
+      : public tracker_base_common<tag::tracker_base<RemoteBackend>, Backend>
     {
     public:
+
+      using base = tracker_base_common<tag::tracker_base<RemoteBackend>, Backend>;
+      using rptr_iter        = typename base::rptr_iter;
+      using rptr_citer       = typename base::rptr_citer;
+      using remote_base_type = typename base::remote_base_type;
+      using reporter_type = typename base::reporter_type;
 
       tracker_base            (void)                    = default;
       tracker_base            (const tracker_base&)     = delete;
@@ -756,7 +764,7 @@ namespace gch
 
       rptr_iter base_bind_before (const rptr_citer pos, remote_base_type& remote)
       {
-        const rptr_iter local_it = rptrs_emplace (pos);
+        const rptr_iter local_it = base::rptrs_emplace (pos);
         try
         {
           const rptr_iter remote_it = remote.rptrs_emplace (remote.rptrs_end ());
@@ -765,7 +773,7 @@ namespace gch
         }
         catch (...)
         {
-          rptrs_erase (local_it);
+          base::rptrs_erase (local_it);
           throw;
         }
         return local_it;
@@ -775,7 +783,7 @@ namespace gch
                                   const rptr_citer first, const rptr_citer last)
       {
         if (first == last)
-          return rptrs_erase (pos, pos);
+          return base::rptrs_erase (pos, pos);
 
         const rptr_iter pivot = base_bind_before (pos, first->get_remote_base ());
         try
@@ -788,7 +796,7 @@ namespace gch
         }
         catch (...)
         {
-          base_debind (pivot, pos);
+          base::base_debind (pivot, pos);
           throw;
         }
         return pivot;
@@ -796,22 +804,22 @@ namespace gch
 
       rptr_iter base_bind_front (remote_base_type& remote)
       {
-        return base_bind_before (rptrs_cbegin (), remote);
+        return base_bind_before (base::rptrs_cbegin (), remote);
       }
 
       rptr_iter base_bind_front (const rptr_citer first, const rptr_citer last)
       {
-        return base_bind_before (rptrs_cbegin (), first, last);
+        return base_bind_before (base::rptrs_cbegin (), first, last);
       }
 
       rptr_iter base_bind_back (remote_base_type& remote)
       {
-        return base_bind_before (rptrs_cend (), remote);
+        return base_bind_before (base::rptrs_cend (), remote);
       }
 
       rptr_iter base_bind_back (const rptr_citer first, const rptr_citer last)
       {
-        return base_bind_before (rptrs_cend (), first, last);
+        return base_bind_before (base::rptrs_cend (), first, last);
       }
 
     }; // tracker_base
@@ -1043,17 +1051,18 @@ namespace gch
     // tracker_common //
     ////////////////////
 
-    template <typename Parent, typename RemoteTag, typename IntrusiveTag>
-    class tracker_common<tracker<Parent, RemoteTag, IntrusiveTag>>
-      : private tracker_base<typename RemoteTag::base>
+    template <typename Parent, typename RemoteTag, typename IntrusiveTag,
+              template <typename ...> class Backend>
+    class tracker_common<tracker<Parent, RemoteTag, IntrusiveTag, Backend>>
+      : private tracker_base<typename RemoteTag::base, Backend>
     {
     public:
 
-      using base                  = tracker_base<typename RemoteTag::base>;
+      using base                  = tracker_base<typename RemoteTag::base, Backend>;
 
-      using local_interface_type  = tracker<Parent, RemoteTag, IntrusiveTag>;
+      using local_interface_type  = tracker<Parent, RemoteTag, IntrusiveTag, Backend>;
 
-      using local_tag             = typename remote::tracker<Parent, IntrusiveTag>::reduced_tag;
+      using local_tag             = typename remote::tracker<Parent, IntrusiveTag, Backend>::reduced_tag;
       using remote_tag            = RemoteTag;
 
       using local_type            = Parent;
@@ -1578,16 +1587,17 @@ namespace gch
   // tracker (intrusive) //
   /////////////////////////
 
-  template <typename Derived, typename RemoteTag>
-  class tracker<Derived, RemoteTag, tag::intrusive>
-    : public detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>,
+  template <typename Derived, typename RemoteTag,
+            template <typename ...> class Backend>
+  class tracker<Derived, RemoteTag, tag::intrusive, Backend>
+    : public detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive, Backend>>,
       public detail::intrusive_common<Derived>
   {
-    using base = detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>;
+    using base = detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive, Backend>>;
     using access_base = detail::intrusive_common<Derived>;
   public:
 
-    using local_tag             = tracker<Derived, tag::intrusive>;
+    using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
 
     using derived_type          = Derived;
@@ -1677,19 +1687,20 @@ namespace gch
   // tracker (nonintrusive) //
   ////////////////////////////
 
-  template <typename Parent, typename RemoteTag>
-  class tracker<Parent, RemoteTag, tag::nonintrusive>
-    : public detail::tracker_common<tracker<Parent, RemoteTag, tag::nonintrusive>>,
+  template <typename Parent, typename RemoteTag,
+            template <typename ...> class Backend>
+  class tracker<Parent, RemoteTag, tag::nonintrusive, Backend>
+    : public detail::tracker_common<tracker<Parent, RemoteTag, tag::nonintrusive, Backend>>,
       public detail::nonintrusive_common<Parent>
   {
-    using base = detail::tracker_common<tracker<Parent, RemoteTag, tag::nonintrusive>>;
+    using base = detail::tracker_common<tracker<Parent, RemoteTag, tag::nonintrusive, Backend>>;
     using access_base = detail::nonintrusive_common<Parent>;
 
     using init_list = typename base::init_list;
 
   public:
 
-    using local_tag             = tracker<Parent, tag::nonintrusive>;
+    using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
 
     using parent_type           = Parent;
@@ -1758,11 +1769,12 @@ namespace gch
     using base::base;
   };
 
-  template <typename RemoteTag>
-  class tracker<tag::standalone, RemoteTag>
-      : public tracker<tracker<tag::standalone, RemoteTag>, RemoteTag, tag::intrusive>
+  template <typename RemoteTag, template <typename ...> class Backend>
+  class tracker<tag::standalone, RemoteTag, tag::nonintrusive, Backend>
+      : public tracker<tracker<tag::standalone, RemoteTag, tag::nonintrusive, Backend>,
+                       RemoteTag, tag::intrusive, Backend>
   {
-    using base = tracker<tracker, RemoteTag, tag::intrusive>;
+    using base = tracker<tracker, RemoteTag, tag::intrusive, Backend>;
   public:
     using base::base;
   };
@@ -1770,40 +1782,46 @@ namespace gch
   template <typename RemoteTag>
   using standalone_reporter = reporter<tag::standalone, RemoteTag>;
 
-  template <typename RemoteTag>
-  using standalone_tracker = tracker<tag::standalone, RemoteTag>;
+  template <typename RemoteTag, template <typename ...> class Backend>
+  using standalone_tracker = tracker<tag::standalone, RemoteTag, tag::nonintrusive, Backend>;
 
-  template <typename Parent, typename Remote = Parent>
+  template <typename Parent, typename Remote = Parent,
+            template <typename ...> class Backend = plf::list>
   using multireporter = tracker<Parent,
-                                remote::tracker<Remote, tag::nonintrusive>,
-                                tag::nonintrusive>;
+                                remote::tracker<Remote, tag::nonintrusive, Backend>,
+                                tag::nonintrusive, Backend>;
 
   template <typename Derived, typename RemoteTag>
   using intrusive_reporter = reporter<Derived, RemoteTag, tag::intrusive>;
 
-  template <typename Derived, typename RemoteTag>
-  using intrusive_tracker = reporter<Derived, RemoteTag, tag::intrusive>;
+  template <typename Derived, typename RemoteTag,
+            template <typename ...> class Backend = plf::list>
+  using intrusive_tracker = tracker<Derived, RemoteTag, tag::intrusive, Backend>;
 
   struct tag::intrusive
   {
-    template <typename Derived>
+    template <typename Derived,
+              template <typename ...> class Backend = plf::list>
     using reporter = remote::reporter<Derived, intrusive>;
 
-    template <typename Derived>
-    using tracker = remote::tracker<Derived, intrusive>;
+    template <typename Derived,
+              template <typename ...> class Backend = plf::list>
+    using tracker = remote::tracker<Derived, intrusive, Backend>;
   };
 
   struct tag::nonintrusive
   {
-    template <typename Derived>
-    using reporter = remote::reporter<Derived, nonintrusive>;
+    template <typename Parent,
+              template <typename ...> class Backend = plf::list>
+    using reporter = remote::reporter<Parent, nonintrusive>;
 
-    template <typename Derived>
-    using tracker = remote::tracker<Derived, nonintrusive>;
+    template <typename Parent,
+              template <typename ...> class Backend = plf::list>
+    using tracker = remote::tracker<Parent, nonintrusive, Backend>;
   };
 
-  template <typename ...Ts, typename ...RemoteTypes>
-  void bind (tracker<Ts...>& l, RemoteTypes&... Remotes)
+  template <typename Parent, typename RemoteTag, typename IntrusiveTag, template <typename ...> class Backend, typename ...RemoteTypes>
+  void bind (tracker<Parent, RemoteTag, IntrusiveTag, Backend>& l, RemoteTypes&... Remotes)
   {
     l.bind (Remotes...);
   }
