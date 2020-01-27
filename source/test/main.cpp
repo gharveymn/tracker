@@ -1488,7 +1488,7 @@ int main()
     std::cout << sa_rptr_std.has_remote () << std::endl;
     std::cout << sa_tkr_std.num_reporters () << std::endl << std::endl;
 
-    tracker<parent, remote::reporter<>, tag::intrusive> xp;
+    tracker<parent, remote::reporter<int>, tag::intrusive> xp;
 
   }
   catch (std::exception &e)

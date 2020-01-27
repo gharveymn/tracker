@@ -47,7 +47,6 @@ namespace gch
   {
     struct intrusive;
     struct nonintrusive;
-    struct standalone;
 
     // for symmetric constructtors
     GCH_INLINE_VARS constexpr struct bind_t  { bind_t  (void) = default; } bind;
@@ -123,66 +122,34 @@ namespace gch
     }
   }
 
-  template <typename Local        = tag::standalone,
-            typename RemoteTag    = tag::nonintrusive,
+  template <typename Parent,
+            typename RemoteTag,
             typename IntrusiveTag = tag::nonintrusive>
   class reporter;
 
-  template <typename Local        = tag::standalone,
-            typename RemoteTag    = tag::nonintrusive,
-            typename IntrusiveTag = tag::nonintrusive,
+  template <typename Parent,
+            typename RemoteTag,
+            typename IntrusiveTag                 = tag::nonintrusive,
             template <typename ...> class Backend = plf::list>
   class tracker;
   
   template <typename RemoteTag>
   struct standalone_reporter;
   
-  template <typename RemoteTag, template <typename ...> class Backend = plf::list>
+  template <typename RemoteTag,
+            template <typename ...> class Backend = plf::list>
   struct standalone_tracker;
 
   namespace remote
   {
-    template <typename Parent       = tag::standalone,
+    template <typename Parent,
               typename IntrusiveTag = tag::nonintrusive>
     struct reporter;
 
-    template <typename Parent       = tag::standalone,
+    template <typename Parent,
               typename IntrusiveTag = tag::nonintrusive,
               template <typename ...> class Backend = plf::list>
     struct tracker;
-
-    template <>
-    struct reporter<> 
-      : detail::tag::reporter_base
-    {
-      using reduced_tag = reporter;
-
-      template <typename LocalTag>
-      using parent_type = gch::reporter<gch::tag::standalone, LocalTag>;
-
-      template <typename LocalTag>
-      using interface_type = gch::reporter<gch::reporter<gch::tag::standalone, LocalTag>,
-                                           LocalTag, gch::tag::intrusive>;
-
-      template <typename LocalTag>
-      using common_type = detail::reporter_common<interface_type<LocalTag>>;
-    };
-
-    template <template <typename ...> class Backend>
-    struct tracker<gch::tag::standalone, gch::tag::nonintrusive, Backend>
-      : detail::tag::tracker_base<Backend>
-    {
-      using reduced_tag = tracker;
-
-      template <typename LocalTag>
-      using parent_type = gch::tracker<gch::tag::standalone, LocalTag, tag::nonintrusive, Backend>;
-
-      template <typename LocalTag>
-      using interface_type = gch::tracker<parent_type<LocalTag>, LocalTag, gch::tag::intrusive, Backend>;
-
-      template <typename LocalTag>
-      using common_type = detail::tracker_common<interface_type<LocalTag>>;
-    };
 
     template <typename Parent, typename IntrusiveTag>
     struct reporter
@@ -1777,25 +1744,6 @@ namespace gch
     { }
 
   }; // tracker
-
-  // template <typename RemoteTag>
-  // class reporter<tag::standalone, RemoteTag>
-  //   : public reporter<reporter<tag::standalone, RemoteTag>, RemoteTag, tag::intrusive>
-  // {
-  //   using base = reporter<reporter, RemoteTag, tag::intrusive>;
-  // public:
-  //   using base::base;
-  // };
-  //
-  // template <typename RemoteTag, template <typename ...> class Backend>
-  // class tracker<tag::standalone, RemoteTag, tag::nonintrusive, Backend>
-  //     : public tracker<tracker<tag::standalone, RemoteTag, tag::nonintrusive, Backend>,
-  //                      RemoteTag, tag::intrusive, Backend>
-  // {
-  //   using base = tracker<tracker, RemoteTag, tag::intrusive, Backend>;
-  // public:
-  //   using base::base;
-  // };
   
   template <typename RemoteTag>
   struct standalone_reporter
@@ -1814,12 +1762,6 @@ namespace gch
   public:
     using base::base;
   };
-
-  // template <typename RemoteTag>
-  // using standalone_reporter = reporter<tag::standalone, RemoteTag>;
-  //
-  // template <typename RemoteTag, template <typename ...> class Backend>
-  // using standalone_tracker = tracker<tag::standalone, RemoteTag, tag::nonintrusive, Backend>;
 
   template <typename Parent, typename Remote = Parent,
             template <typename ...> class Backend = plf::list>
