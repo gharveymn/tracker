@@ -85,7 +85,7 @@ template <typename LocalTag, template <typename ...> class Child,
 using base_type = typename LocalTag::template interface_type<TRemoteTag<Child<LocalTag>>>;
 
 template <template <typename ...> class Child,
-  template <typename, template <typename ...> class> class TRemoteTag>
+  template <typename, template <typename ...> class = plf::list> class TRemoteTag>
 struct iparent_r
   : base_type<tag::intrusive::reporter<iparent_r<Child, TRemoteTag>>, Child, TRemoteTag>
 {
@@ -96,7 +96,8 @@ struct iparent_r
 
 };
 
-template <template <typename ...> class Child, template <typename, template <typename ...> class> class TRemoteTag>
+template <template <typename ...> class Child,
+  template <typename, template <typename ...> class = plf::list> class TRemoteTag>
 struct nparent_r
 {
 
@@ -108,7 +109,8 @@ struct nparent_r
 
 };
 
-template <template <typename ...> class Child, template <typename, template <typename ...> class> class TRemoteTag>
+template <template <typename ...> class Child,
+  template <typename, template <typename ...> class = plf::list> class TRemoteTag>
 struct iparent_t
   : base_type<tag::intrusive::tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
 {
@@ -124,7 +126,8 @@ struct iparent_t
 
 };
 
-template <template <typename ...> class Child, template <typename, template <typename ...> class> class TRemoteTag>
+template <template <typename ...> class Child,
+  template <typename, template <typename ...> class = plf::list> class TRemoteTag>
 struct nparent_t
 {
 
@@ -1448,7 +1451,7 @@ int main()
     test_disparate_multireporter ();
     test_binding ();
 
-    standalone_tracker<remote::standalone_reporter<>> sa_tkr;
+    standalone_tracker<remote::standalone_reporter> sa_tkr;
     standalone_reporter<remote::standalone_tracker<>> sa_rptr (tag::bind, sa_tkr);
     
     std::cout << &sa_rptr << std::endl;
@@ -1468,7 +1471,7 @@ int main()
     std::cout << sa_rptr.has_remote () << std::endl;
     std::cout << sa_tkr.num_reporters () << std::endl << std::endl;
 
-    standalone_tracker<remote::standalone_reporter<>, std::list> sa_tkr_std;
+    standalone_tracker<remote::standalone_reporter, std::list> sa_tkr_std;
     standalone_reporter<remote::standalone_tracker<std::list>> sa_rptr_std (tag::bind, sa_tkr_std);
 
     std::cout << &sa_rptr_std << std::endl;
