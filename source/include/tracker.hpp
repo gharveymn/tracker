@@ -119,8 +119,8 @@ namespace gch
 
       // for asymmetric constructors
       GCH_INLINE_VARS constexpr struct track_t { track_t (void) = default; } track;
-    }
-  }
+    } // tag
+  } // detail
 
   template <typename Parent,
             typename RemoteTag,
@@ -155,9 +155,17 @@ namespace gch
     struct reporter
       : detail::tag::reporter_base
     {
+      reporter            (void)                = delete;
+      reporter            (const reporter&)     = delete;
+      reporter            (reporter&&) noexcept = delete;
+      reporter& operator= (const reporter&)     = delete;
+      reporter& operator= (reporter&&) noexcept = delete;
+      ~reporter           (void)                = delete;
+      
+      
       using reduced_tag = reporter;
 
-      template <typename LocalTag>
+      template <typename>
       using parent_type = Parent;
 
       template <typename LocalTag>
@@ -172,9 +180,17 @@ namespace gch
     struct tracker
       : detail::tag::tracker_base<Backend>
     {
+      tracker            (void)               = delete;
+      tracker            (const tracker&)     = delete;
+      tracker            (tracker&&) noexcept = delete;
+      tracker& operator= (const tracker&)     = delete;
+      tracker& operator= (tracker&&) noexcept = delete;
+      ~tracker           (void)               = delete;
+      
+      
       using reduced_tag = tracker;
 
-      template <typename LocalTag>
+      template <typename>
       using parent_type = Parent;
 
       template <typename LocalTag>
@@ -184,10 +200,17 @@ namespace gch
       using common_type = detail::tracker_common<interface_type<LocalTag>>;
     };
     
-    template <typename = void>
     struct standalone_reporter
       : detail::tag::reporter_base
     {
+      standalone_reporter            (void)                           = delete;
+      standalone_reporter            (const standalone_reporter&)     = delete;
+      standalone_reporter            (standalone_reporter&&) noexcept = delete;
+      standalone_reporter& operator= (const standalone_reporter&)     = delete;
+      standalone_reporter& operator= (standalone_reporter&&) noexcept = delete;
+      ~standalone_reporter           (void)                           = delete;
+      
+      
       using reduced_tag = standalone_reporter;
   
       template <typename LocalTag>
@@ -205,6 +228,13 @@ namespace gch
     struct standalone_tracker
       : detail::tag::tracker_base<Backend>
     {
+      standalone_tracker            (void)                          = delete;
+      standalone_tracker            (const standalone_tracker&)     = delete;
+      standalone_tracker            (standalone_tracker&&) noexcept = delete;
+      standalone_tracker& operator= (const standalone_tracker&)     = delete;
+      standalone_tracker& operator= (standalone_tracker&&) noexcept = delete;
+      ~standalone_tracker           (void)                          = delete;
+      
       using reduced_tag = standalone_tracker;
     
       template <typename LocalTag>
@@ -220,19 +250,33 @@ namespace gch
     
     template <typename RemoteTag>
     struct reporter<gch::standalone_reporter<RemoteTag>, gch::tag::intrusive>
-      : remote::standalone_reporter<>
+      : remote::standalone_reporter
     {
-      using reduced_tag = remote::standalone_reporter<>;
+      reporter            (void)                = delete;
+      reporter            (const reporter&)     = delete;
+      reporter            (reporter&&) noexcept = delete;
+      reporter& operator= (const reporter&)     = delete;
+      reporter& operator= (reporter&&) noexcept = delete;
+      ~reporter           (void)                = delete;
+      
+      
+      using reduced_tag = remote::standalone_reporter;
     };
   
     template <typename RemoteTag, template <typename ...> class Backend>
     struct tracker<gch::standalone_tracker<RemoteTag, Backend>, gch::tag::intrusive, Backend>
       : remote::standalone_tracker<Backend>
     {
+      tracker            (void)               = delete;
+      tracker            (const tracker&)     = delete;
+      tracker            (tracker&&) noexcept = delete;
+      tracker& operator= (const tracker&)     = delete;
+      tracker& operator= (tracker&&) noexcept = delete;
+      ~tracker           (void)               = delete;
+      
       using reduced_tag = remote::standalone_tracker<Backend>;
     };
-
-  }
+  } // remote
 
 
   namespace detail
@@ -1779,7 +1823,7 @@ namespace gch
   struct tag::intrusive
   {
     template <typename Derived,
-              template <typename ...> class Backend = plf::list>
+              template <typename ...> class = plf::list>
     using reporter = remote::reporter<Derived, intrusive>;
 
     template <typename Derived,
@@ -1790,7 +1834,7 @@ namespace gch
   struct tag::nonintrusive
   {
     template <typename Parent,
-              template <typename ...> class Backend = plf::list>
+              template <typename ...> class = plf::list>
     using reporter = remote::reporter<Parent, nonintrusive>;
 
     template <typename Parent,
