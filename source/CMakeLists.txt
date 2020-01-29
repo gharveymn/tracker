@@ -5,7 +5,7 @@ INCLUDE("${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmak
 
 CREATE_PACKAGE(AUTHOR       gharveymn
                DEPENDENCIES optional_ref plf_list
-               HEADERS      tracker.hpp)
+               HEADERS      tracker.hpp vector_tracker.hpp)
 
 IF(TRACKER_BUILD_TESTS)
   MESSAGE(STATUS "Testing is enabled.")

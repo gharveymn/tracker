@@ -1,4 +1,5 @@
 #include "tracker.hpp"
+#include "vector_tracker.hpp"
 
 #include <iostream>
 #include <memory>
@@ -13,7 +14,7 @@
 using namespace gch;
 
 #ifndef NDEBUG
-constexpr std::size_t multiplier = 1;
+constexpr std::size_t multiplier = 100;
 #else
 constexpr std::size_t multiplier = 100;
 #endif
@@ -192,11 +193,11 @@ template struct nchild_t<tag::nonintrusive::tracker <nparent_t<nchild_t, tag::no
 class parent;
 class child;
 
-class child : public intrusive_reporter<child, remote::tracker<parent>>
+class child : public intrusive_reporter<child, remote::tracker<parent, tag::nonintrusive, std::vector>>
 {
 public:
 
-  using base = intrusive_reporter<child, remote::tracker<parent>>;
+  using base = intrusive_reporter<child, remote::tracker<parent, tag::nonintrusive, std::vector>>;
 
   child (void) = default;
 
@@ -261,7 +262,7 @@ class parent
 public:
 
   using reporter_type = child;
-  using tracker_type  = tracker<parent, remote::reporter<child, tag::intrusive>>;
+  using tracker_type  = tracker<parent, remote::reporter<child, tag::intrusive>, tag::nonintrusive, std::vector>;
 
   parent (void)
     : m_children (*this)
@@ -584,7 +585,7 @@ public:
 
 private:
 
-  multireporter<self_parent> m_tracker;
+  multireporter<self_parent, self_parent, std::vector> m_tracker;
   std::string m_name;
 
 };
@@ -628,7 +629,7 @@ public:
 
 private:
 
-  multireporter<anon_self_parent> m_tracker;
+  multireporter<anon_self_parent, anon_self_parent, std::vector> m_tracker;
 
 };
 
@@ -671,7 +672,7 @@ public:
 
 private:
 
-  multireporter<anon1, anon2> m_tracker;
+  multireporter<anon1, anon2, std::vector> m_tracker;
 
 };
 
@@ -716,7 +717,7 @@ public:
 
 private:
 
-  multireporter<anon2, anon1> m_tracker;
+  multireporter<anon2, anon1, std::vector> m_tracker;
 
 };
 
@@ -785,7 +786,7 @@ public:
     return m_tracker.wipe ();
   }
 
-  multireporter<named1, named2>& get_tracker (void)
+  multireporter<named1, named2, std::vector>& get_tracker (void)
   {
     return m_tracker;
   }
@@ -805,7 +806,7 @@ public:
 
 private:
 
-  multireporter<named1, named2> m_tracker;
+  multireporter<named1, named2, std::vector> m_tracker;
   std::string m_name;
 
 };
@@ -858,7 +859,7 @@ public:
     return m_tracker.wipe ();
   }
 
-  multireporter<named2, named1>& get_tracker (void)
+  multireporter<named2, named1, std::vector>& get_tracker (void)
   {
     return m_tracker;
   }
@@ -890,7 +891,7 @@ public:
 
 private:
 
-  multireporter<named2, named1> m_tracker;
+  multireporter<named2, named1, std::vector> m_tracker;
   std::string m_name;
 
 };
@@ -1302,7 +1303,7 @@ std::chrono::duration<double> test_binding (void)
   print_all ();
 
   // copy constructor
-  std::unique_ptr<multireporter<named1, named2>> cpy (new multireporter<named1, named2> (*n1_3));
+  std::unique_ptr<multireporter<named1, named2, std::vector>> cpy (new multireporter<named1, named2, std::vector> (*n1_3));
 
   std::cout << "cpy: " << cpy->num_reporters () << std::endl;
   print_all ();
@@ -1492,6 +1493,26 @@ int main()
     std::cout << sa_tkr_std.num_reporters () << std::endl << std::endl;
 
     tracker<parent, remote::reporter<int>, tag::intrusive> xp;
+  
+    standalone_tracker<remote::standalone_reporter, std::vector> sa_tkr_v;
+    standalone_reporter<remote::standalone_tracker<std::vector>> sa_rptr_v (tag::bind, sa_tkr_v);
+  
+    std::cout << &sa_rptr_v << std::endl;
+    std::cout << &sa_tkr_v << std::endl << std::endl;
+  
+    std::cout << sa_rptr_v.has_remote () << std::endl;
+    std::cout << &sa_rptr_v.get_remote () << std::endl;
+    std::cout << sa_tkr_v.num_reporters () << std::endl;
+    std::cout << &sa_tkr_v.front () << std::endl << std::endl;
+  
+    assert (sa_rptr_v.get_maybe_remote ().has_value ());
+  
+    sa_rptr_v.debind ();
+  
+    assert (! sa_rptr_v.get_maybe_remote ().has_value ());
+  
+    std::cout << sa_rptr_v.has_remote () << std::endl;
+    std::cout << sa_tkr_v.num_reporters () << std::endl << std::endl;
 
   }
   catch (std::exception &e)
@@ -1515,7 +1536,24 @@ int main()
   std::cout << "nreporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
   std::cout << "nreporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
   std::cout << "nreporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::nonintrusive>) << std::endl;
+  std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::nonintrusive>) << std::endl << std::endl;
+  
+  std::cout << "itracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::intrusive, std::vector>)    << std::endl;
+  std::cout << "itracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::intrusive, std::vector>)    << std::endl;
+  std::cout << "itracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::intrusive, std::vector>)    << std::endl;
+  std::cout << "itracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::intrusive, std::vector>)    << std::endl;
+  std::cout << "ntracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::nonintrusive, std::vector>) << std::endl;
+  std::cout << "ntracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::nonintrusive, std::vector>) << std::endl;
+  std::cout << "ntracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::nonintrusive, std::vector>) << std::endl;
+  std::cout << "ntracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::nonintrusive, std::vector>) << std::endl;
+  std::cout << "ireporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
+  std::cout << "ireporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
+  std::cout << "ireporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
+  std::cout << "ireporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
+  std::cout << "nreporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
+  std::cout << "nreporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
+  std::cout << "nreporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
+  std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::nonintrusive>) << std::endl << std::endl;
 
   std::cout << "iter  :" << sizeof (tracker<child, tag::intrusive::reporter<parent>, tag::nonintrusive>::iter) << std::endl;
 
