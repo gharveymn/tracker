@@ -11,33 +11,42 @@
 #if ! defined (tracker_hpp)
 #define tracker_hpp 1
 
-#include <algorithm>
-#include <plf_list.h>
-#include <iterator>
 #include <optional_ref.hpp>
+#include <plf_list.h>
 
-#if __has_cpp_attribute(nodiscard)
-#  define GCH_NODISCARD [[nodiscard]]
-#else
-#  define GCH_NODISCARD
+#include <algorithm>
+#include <iterator>
+
+#ifndef GCH_NODISCARD
+#  if __has_cpp_attribute(nodiscard)
+#    define GCH_NODISCARD [[nodiscard]]
+#  else
+#    define GCH_NODISCARD
+#  endif
 #endif
 
-#if __cpp_inline_variables >= 201606
-#  define GCH_INLINE_VARS inline
-#else
-#  define GCH_INLINE_VARS
+#ifndef GCH_INLINE_VARS
+#  if __cpp_inline_variables >= 201606
+#    define GCH_INLINE_VARS inline
+#  else
+#    define GCH_INLINE_VARS
+#  endif
 #endif
 
-#if __cpp_constexpr >= 201603L
-#  define GCH_CPP17_CONSTEXPR constexpr
-#else
-#  define GCH_CPP17_CONSTEXPR
+#ifndef GCH_CPP17_CONSTEXPR
+#if   __cpp_constexpr >= 201603L
+#    define GCH_CPP17_CONSTEXPR constexpr
+#  else
+#    define GCH_CPP17_CONSTEXPR
+#  endif
 #endif
 
-#if __cpp_constexpr >= 201304L
-#  define GCH_CPP14_CONSTEXPR constexpr
-#else
-#  define GCH_CPP14_CONSTEXPR
+#ifndef GCH_CPP14_CONSTEXPR
+#  if __cpp_constexpr >= 201304L
+#    define GCH_CPP14_CONSTEXPR constexpr
+#  else
+#    define GCH_CPP14_CONSTEXPR
+#  endif
 #endif
 
 namespace gch
@@ -51,7 +60,6 @@ namespace gch
 
     // for symmetric constructtors
     GCH_INLINE_VARS constexpr struct bind_t  { bind_t  (void) = default; } bind;
-    GCH_INLINE_VARS constexpr struct track_t { track_t (void) = default; } track;
   }
 
   namespace detail
@@ -1937,7 +1945,5 @@ namespace gch
   }
 
 }
-
-#undef GCH_NODISCARD
 
 #endif
