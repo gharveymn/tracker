@@ -247,27 +247,13 @@ namespace gch
     using tracker = detail::tag::tracker<Parent, IntrusiveTag>;
 
     using standalone_reporter = detail::tag::standalone_reporter;
+    using standalone_tracker  = detail::tag::standalone_tracker;
 
-    using standalone_tracker = detail::tag::standalone_tracker;
+    template <typename Parent>
+    using intrusive_reporter = remote::reporter<Parent, tag::intrusive>;
 
-    struct intrusive
-    {
-      template <typename Derived>
-      using reporter = remote::reporter<Derived, intrusive>;
-
-      template <typename Derived>
-      using tracker = remote::tracker<Derived, intrusive>;
-    };
-
-    struct nonintrusive
-    {
-      template <typename Derived>
-      using reporter = remote::reporter<Derived, nonintrusive>;
-
-      template <typename Derived>
-      using tracker = remote::tracker<Derived, nonintrusive>;
-    };
-
+    template <typename Parent>
+    using intrusive_tracker = remote::tracker<Parent, tag::intrusive>;
   }
 
   namespace detail
