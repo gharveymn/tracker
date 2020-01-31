@@ -297,7 +297,7 @@ public:
 
   std::size_t num_children (void) noexcept
   {
-    return m_children.num_reporters ();
+    return m_children.num_remotes ();
   }
 
   tracker_type::citer find (const child& c)
@@ -314,28 +314,152 @@ private:
   std::string m_name;
 };
 
+class ichild;
+class iparent;
+
+class ichild : public intrusive_reporter<ichild, remote::intrusive_tracker<iparent>>
+{
+public:
+
+  using base = intrusive_reporter<ichild, remote::intrusive_tracker<iparent>>;
+
+  ichild (void) = default;
+
+  ichild (std::nullptr_t, std::string s)
+    : m_name (std::move (s))
+  { }
+
+  ichild (typename base::remote_interface_type& tkr)
+    : base (tag::bind, tkr)
+  { }
+
+  ichild (typename base::remote_interface_type& tkr, std::string s)
+    : base (tag::bind, tkr),
+      m_name (std::move (s))
+  { }
+
+  ichild (const ichild& o)
+    : base (o.clone ()),
+      m_name (o.m_name)
+  { }
+
+  ichild (ichild&& o) noexcept
+    : base (std::move (o)),
+      m_name (std::move (o.m_name))
+  { }
+
+  ichild& operator= (const ichild& other)
+  {
+    if (&other != this)
+    {
+      reporter::operator= (other.clone ());
+      m_name = other.m_name;
+    }
+    return *this;
+  }
+
+  ichild& operator= (ichild&& other) noexcept
+  {
+    m_name = std::move (other.m_name);
+    reporter::operator= (std::move (other));
+    return *this;
+  }
+
+  friend std::ostream& operator<< (std::ostream& o, const ichild& c)
+  {
+    return o << c.m_name;
+  }
+
+  std::size_t f (std::size_t x) const
+  {
+    return x % 17;
+  }
+
+  void rebind (iparent& p);
+
+private:
+  std::string m_name;
+};
+
+class iparent
+  : intrusive_tracker<iparent, remote::intrusive_reporter<ichild>>
+{
+public:
+
+  using reporter_type = ichild;
+
+  explicit iparent (std::string s)
+    : m_name (std::move (s))
+  { }
+
+//  child create (std::string s)
+//  {
+//    return { std::move (s, *this) };
+//  }
+
+  friend void ichild::rebind (iparent&);
+
+  void transfer_from (iparent& other)
+  {
+    transfer_bindings (other);
+  }
+
+  template <typename ...Args>
+  ichild create (Args&&... args)
+  {
+    return { *this, std::forward<Args> (args)... };
+  }
+
+  friend std::ostream& operator<< (std::ostream& o, const iparent& p)
+  {
+    o << p.m_name << ": { ";
+    for (const reporter_type& c : p)
+      o << c << " ";
+    return o << "}";
+  }
+
+  std::size_t num_children (void) noexcept
+  {
+    return num_remotes ();
+  }
+
+  citer find (const reporter_type& c)
+  {
+    return std::find_if (begin (), end (),
+                         [&c](const reporter_type& x) { return &x == &c; });
+  }
+
+private:
+  std::string m_name;
+};
+
 void child::rebind (parent& p)
 {
   base::rebind (p.m_children);
 }
 
-template class gch::tracker<int, tag::intrusive::reporter<int>, tag::intrusive>;
-template class gch::tracker<int, tag::nonintrusive::reporter<int>, tag::intrusive>;
-template class gch::tracker<int, tag::intrusive::tracker <int>, tag::intrusive>;
-template class gch::tracker<int, tag::nonintrusive::tracker            <int>, tag::intrusive>;
-template class gch::tracker<int, tag::intrusive::reporter<int>, tag::nonintrusive>;
-template class gch::tracker<int, tag::nonintrusive::reporter           <int>, tag::nonintrusive>;
-template class gch::tracker<int, tag::intrusive::tracker <int>, tag::nonintrusive>;
-template class gch::tracker<int, tag::nonintrusive::tracker            <int>, tag::nonintrusive>;
+void ichild::rebind (iparent& p)
+{
+  base::rebind (p);
+}
 
-template class gch::reporter<int, tag::intrusive::reporter<int>, tag::intrusive>;
-template class gch::reporter<int, tag::nonintrusive::reporter           <int>, tag::intrusive>;
-template class gch::reporter<int, tag::intrusive::tracker <int>, tag::intrusive>;
-template class gch::reporter<int, tag::nonintrusive::tracker            <int>, tag::intrusive>;
-template class gch::reporter<int, tag::intrusive::reporter<int>, tag::nonintrusive>;
-template class gch::reporter<int, tag::nonintrusive::reporter           <int>, tag::nonintrusive>;
-template class gch::reporter<int, tag::intrusive::tracker <int>,  tag::nonintrusive>;
-template class gch::reporter<int, tag::nonintrusive::tracker            <int>, tag::nonintrusive>;
+//template class gch::tracker<int, tag::intrusive::reporter<int>, tag::intrusive>;
+//template class gch::tracker<int, tag::nonintrusive::reporter<int>, tag::intrusive>;
+//template class gch::tracker<int, tag::intrusive::tracker <int>, tag::intrusive>;
+//template class gch::tracker<int, tag::nonintrusive::tracker            <int>, tag::intrusive>;
+//template class gch::tracker<int, tag::intrusive::reporter<int>, tag::nonintrusive>;
+//template class gch::tracker<int, tag::nonintrusive::reporter           <int>, tag::nonintrusive>;
+//template class gch::tracker<int, tag::intrusive::tracker <int>, tag::nonintrusive>;
+//template class gch::tracker<int, tag::nonintrusive::tracker            <int>, tag::nonintrusive>;
+//
+//template class gch::reporter<int, tag::intrusive::reporter<int>, tag::intrusive>;
+//template class gch::reporter<int, tag::nonintrusive::reporter           <int>, tag::intrusive>;
+//template class gch::reporter<int, tag::intrusive::tracker <int>, tag::intrusive>;
+//template class gch::reporter<int, tag::nonintrusive::tracker            <int>, tag::intrusive>;
+//template class gch::reporter<int, tag::intrusive::reporter<int>, tag::nonintrusive>;
+//template class gch::reporter<int, tag::nonintrusive::reporter           <int>, tag::nonintrusive>;
+//template class gch::reporter<int, tag::intrusive::tracker <int>,  tag::nonintrusive>;
+//template class gch::reporter<int, tag::nonintrusive::tracker            <int>, tag::nonintrusive>;
 
 class nonintruded_child_s;
 class nonintruded_child;
@@ -501,7 +625,7 @@ public:
 
   std::size_t num_children (void) noexcept
   {
-    return m_children.num_reporters ();
+    return m_children.num_remotes ();
   }
 
   typename tracker_type::iter begin (void) noexcept { return m_children.begin (); }
@@ -561,7 +685,7 @@ public:
 
   std::size_t num_reporters (void) const noexcept
   {
-    return m_tracker.num_reporters ();
+    return m_tracker.num_remotes ();
   }
 
   self_parent& operator= (self_parent&& other) noexcept
@@ -620,7 +744,7 @@ public:
 
   friend std::ostream& operator<< (std::ostream& o, const anon_self_parent& p)
   {
-    return o << p.m_tracker.num_reporters ();
+    return o << p.m_tracker.num_remotes ();
   }
 
 private:
@@ -663,7 +787,7 @@ public:
 
   friend std::ostream& operator<< (std::ostream& o, const anon1& p)
   {
-    return o << p.m_tracker.num_reporters ();
+    return o << p.m_tracker.num_remotes ();
   }
 
 private:
@@ -708,7 +832,7 @@ public:
 
   friend std::ostream& operator<< (std::ostream& o, const anon2& p)
   {
-    return o << p.m_tracker.num_reporters ();
+    return o << p.m_tracker.num_remotes ();
   }
 
 private:
@@ -787,7 +911,7 @@ public:
     return m_tracker;
   }
 
-  std::size_t num_reporters (void) { return m_tracker.num_reporters (); }
+  std::size_t num_reporters (void) { return m_tracker.num_remotes (); }
 
   const std::string& get_name (void) const noexcept { return m_name; }
 
@@ -872,7 +996,7 @@ public:
     bind (n1);
   }
 
-  std::size_t num_reporters (void) { return m_tracker.num_reporters (); }
+  std::size_t num_reporters (void) { return m_tracker.num_remotes (); }
 
   const std::string& get_name (void) const noexcept { return m_name; }
 
@@ -1301,7 +1425,7 @@ std::chrono::duration<double> test_binding (void)
   // copy constructor
   std::unique_ptr<multireporter<named1, named2>> cpy (new multireporter<named1, named2> (*n1_3));
 
-  std::cout << "cpy: " << cpy->num_reporters () << std::endl;
+  std::cout << "cpy: " << cpy->num_remotes () << std::endl;
   print_all ();
 
   std::cout << "remove n1_1" << std::endl;
@@ -1404,12 +1528,12 @@ std::chrono::duration<double> test_reporter (void)
 
 struct mix
   : reporter<mix, remote::standalone_tracker, tag::intrusive>,
-    tracker<mix, remote::standalone_tracker, tag::intrusive>
+    tracker<mix, remote::standalone_reporter, tag::intrusive>
 {
-  mix (standalone_tracker<remote::reporter<mix, tag::intrusive>>& tkr1,
-       standalone_tracker<remote::tracker<mix, tag::intrusive>>& tkr2)
-    : reporter (tag::bind, tkr1),
-      tracker  (tag::bind, { tkr2 })
+  mix (standalone_tracker<remote::reporter<mix, tag::intrusive>>& tkr,
+       standalone_reporter<remote::tracker<mix, tag::intrusive>>& rptr)
+    : reporter (tag::bind, tkr),
+      tracker  (tag::bind, { rptr })
   { }
 };
 
@@ -1417,6 +1541,13 @@ int main()
 {
   try
   {
+    standalone_tracker<remote::reporter<mix, tag::intrusive>> mix_tkr;
+    standalone_reporter<remote::tracker<mix, tag::intrusive>> mix_rptr;
+
+    mix mx (mix_tkr, mix_rptr);
+    if (mx.has_remote ())
+      mix& rem = mix_rptr.get_remote ();
+
     std::cout << test_reporter<child, parent> ().count () << std::endl;
     std::cout
       << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count ()
@@ -1456,7 +1587,7 @@ int main()
 
     std::cout << sa_rptr.has_remote () << std::endl;
     std::cout << &sa_rptr.get_remote () << std::endl;
-    std::cout << sa_tkr.num_reporters () << std::endl;
+    std::cout << sa_tkr.num_remotes () << std::endl;
     std::cout << &sa_tkr.front () << std::endl << std::endl;
 
     assert (sa_rptr.get_maybe_remote ().has_value ());
@@ -1466,7 +1597,7 @@ int main()
     assert (! sa_rptr.get_maybe_remote ().has_value ());
 
     std::cout << sa_rptr.has_remote () << std::endl;
-    std::cout << sa_tkr.num_reporters () << std::endl << std::endl;
+    std::cout << sa_tkr.num_remotes () << std::endl << std::endl;
 
     tracker<parent, remote::reporter<int>, tag::intrusive> xp;
 

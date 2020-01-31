@@ -410,6 +410,12 @@ namespace gch
         return base::get_remote_base ();
       }
 
+      reporter_base& set (remote_base_type& remote) noexcept
+      {
+        base::track (remote);
+        return *this;
+      }
+
     };
 
     template <typename LocalBaseTag>
@@ -617,7 +623,7 @@ namespace gch
       }
 
       GCH_NODISCARD
-      std::size_t num_reporters (void) const noexcept
+      std::size_t num_remotes (void) const noexcept
       {
         return m_rptrs.size ();
       }
@@ -724,14 +730,61 @@ namespace gch
       tracker_base& operator= (tracker_base&&) noexcept = default;
       ~tracker_base           (void)                    = default;
 
-      template <typename ...Args>
-      rptr_iter base_bind_before (Args&&...) = delete;
+      tracker_base (const rptr_citer first, const rptr_citer last)
+      {
+        base_bind_back (first, last);
+      }
 
-      template <typename ...Args>
-      rptr_iter base_bind_front (Args&&...) = delete;
+      rptr_iter base_bind_before (const rptr_citer pos, remote_base_type& remote)
+      {
+        const rptr_iter local_it = rptrs_emplace (pos, tag::track, remote);
+        remote.debind ();
+        remote.set (*this, local_it);
+        return local_it;
+      }
 
-      template <typename ...Args>
-      rptr_iter base_bind_back (Args&&...) = delete;
+      rptr_iter base_bind_before (const rptr_citer pos,
+                                  const rptr_citer first, const rptr_citer last)
+      {
+        if (first == last)
+          return rptrs_erase (pos, pos);
+
+        const rptr_iter pivot = base_bind_before (pos, first->get_remote_base ());
+        try
+        {
+          std::for_each (std::next (first), last,
+                         [this, pos] (const reporter_type& reporter)
+                         {
+                           base_bind_before (pos, reporter.get_remote_base ());
+                         });
+        }
+        catch (...)
+        {
+          base_debind (pivot, pos);
+          throw;
+        }
+        return pivot;
+      }
+
+      rptr_iter base_bind_front (remote_base_type& remote)
+      {
+        return base_bind_before (rptrs_cbegin (), remote);
+      }
+
+      rptr_iter base_bind_front (const rptr_citer first, const rptr_citer last)
+      {
+        return base_bind_before (rptrs_cbegin (), first, last);
+      }
+
+      rptr_iter base_bind_back (remote_base_type& remote)
+      {
+        return base_bind_before (rptrs_cend (), remote);
+      }
+
+      rptr_iter base_bind_back (const rptr_citer first, const rptr_citer last)
+      {
+        return base_bind_before (rptrs_cend (), first, last);
+      }
 
     };
 
@@ -1238,7 +1291,7 @@ namespace gch
 
       using base::clear;
       using base::wipe;
-      using base::num_reporters;
+      using base::num_remotes;
 
       tracker_common            (void)                      = default;
       tracker_common            (const tracker_common&)     = delete;
@@ -1251,6 +1304,24 @@ namespace gch
       ~tracker_common (void)
       {
         base::clear ();
+      }
+
+      tracker_common (citer first, citer last)
+        : base (first, last)
+      { }
+
+      tracker_common (gch::tag::bind_t, init_list init)
+      {
+        try
+        {
+          for (auto&& remote : init)
+            base::base_bind_back (remote);
+        }
+        catch (...)
+        {
+          base::base_debind (base::rptrs_begin (), base::rptrs_cend ());
+          throw;
+        }
       }
 
       void swap (tracker_common& other) noexcept
@@ -1336,14 +1407,6 @@ namespace gch
       //! disabled for reporters
 
       template <typename Tag = remote_tag,
-                tag::enable_if_reporter_b<Tag> = false>
-      tracker_common (citer first, citer last) = delete;
-
-      template <typename Tag = remote_tag,
-                tag::enable_if_reporter_b<Tag> = false>
-      tracker_common (gch::tag::bind_t, init_list init) = delete;
-
-      template <typename Tag = remote_tag,
         tag::enable_if_reporter_b<Tag> = false>
       local_interface_type& copy_replace_bindings (const local_interface_type& other) = delete;
 
@@ -1362,27 +1425,6 @@ namespace gch
 
       //! enabled for trackers
 
-      template <typename Tag = remote_tag,
-                tag::enable_if_tracker_b<Tag> = true>
-      tracker_common (citer first, citer last)
-        : base (first, last)
-      { }
-
-      template <typename Tag = remote_tag,
-                tag::enable_if_tracker_b<Tag> = true>
-      tracker_common (gch::tag::bind_t, init_list init)
-      {
-        try
-        {
-          for (auto&& remote : init)
-            base::base_bind_back (remote);
-        }
-        catch (...)
-        {
-          base::base_debind (base::rptrs_begin (), base::rptrs_cend ());
-          throw;
-        }
-      }
 
       template <typename Tag = remote_tag,
                 tag::enable_if_tracker_b<Tag> = true>
@@ -1438,39 +1480,6 @@ namespace gch
 
     }; // tracker_common
 
-    //////////////////////
-    // intrusive_common //
-    //////////////////////
-
-    template <typename Derived>
-    class intrusive_common
-    {
-
-      using derived_type = Derived;
-
-    public:
-
-      intrusive_common            (void)                        = default;
-      intrusive_common            (const intrusive_common&)     = default;
-      intrusive_common            (intrusive_common&&) noexcept = default;
-      intrusive_common& operator= (const intrusive_common&)     = default;
-      intrusive_common& operator= (intrusive_common&&) noexcept = default;
-      ~intrusive_common           (void)                        = default;
-
-      GCH_NODISCARD
-      GCH_CPP14_CONSTEXPR derived_type& get_parent (void) noexcept
-      {
-        return static_cast<derived_type&> (*this);
-      }
-
-      GCH_NODISCARD
-      constexpr const derived_type& get_parent (void) const noexcept
-      {
-        return static_cast<const derived_type&> (*this);
-      }
-
-    }; // intrusive_common
-
     /////////////////////////
     // nonintrusive_common //
     /////////////////////////
@@ -1492,7 +1501,7 @@ namespace gch
 
       void swap (nonintrusive_common& other) = delete;
 
-      constexpr nonintrusive_common (parent_type& parent)
+      constexpr explicit nonintrusive_common (parent_type& parent)
         : m_parent (parent)
       { }
 
@@ -1522,13 +1531,11 @@ namespace gch
 
   template <typename Derived, typename RemoteTag>
   class reporter<Derived, RemoteTag, tag::intrusive>
-    : public detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>,
-      public detail::intrusive_common<Derived>
+    : public detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>
   {
   public:
 
     using base = detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>;
-    using access_base = detail::intrusive_common<Derived>;
 
     using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
@@ -1550,9 +1557,21 @@ namespace gch
     reporter& operator= (reporter&&) noexcept = default;
     ~reporter           (void)                = default;
 
-    reporter (base&& other) noexcept
+    /* implicit */ reporter (base&& other) noexcept
       : base (std::move (other))
     { }
+
+    GCH_NODISCARD
+    GCH_CPP14_CONSTEXPR derived_type& get_parent (void) noexcept
+    {
+      return static_cast<derived_type&> (*this);
+    }
+
+    GCH_NODISCARD
+    constexpr const derived_type& get_parent (void) const noexcept
+    {
+      return static_cast<const derived_type&> (*this);
+    }
 
   }; // reporter
 
@@ -1562,11 +1581,9 @@ namespace gch
 
   template <typename Derived, typename RemoteTag>
   class tracker<Derived, RemoteTag, tag::intrusive>
-    : public detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>,
-      public detail::intrusive_common<Derived>
+    : public detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>
   {
     using base = detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>;
-    using access_base = detail::intrusive_common<Derived>;
   public:
 
     using local_tag             = typename base::local_tag;
@@ -1589,9 +1606,21 @@ namespace gch
     tracker& operator= (tracker&&) noexcept = default;
     ~tracker           (void)               = default;
 
-    tracker (base&& other) noexcept
+    /* implicit */ tracker (base&& other) noexcept
       : base (std::move (other))
     { }
+
+    GCH_NODISCARD
+    GCH_CPP14_CONSTEXPR derived_type& get_parent (void) noexcept
+    {
+      return static_cast<derived_type&> (*this);
+    }
+
+    GCH_NODISCARD
+    constexpr const derived_type& get_parent (void) const noexcept
+    {
+      return static_cast<const derived_type&> (*this);
+    }
 
   }; // tracker
 
@@ -1758,7 +1787,7 @@ namespace gch
   using intrusive_reporter = reporter<Derived, RemoteTag, tag::intrusive>;
 
   template <typename Derived, typename RemoteTag>
-  using intrusive_tracker = reporter<Derived, RemoteTag, tag::intrusive>;
+  using intrusive_tracker = tracker<Derived, RemoteTag, tag::intrusive>;
 
   struct tag::intrusive
   {
