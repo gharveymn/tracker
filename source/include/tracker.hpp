@@ -1039,11 +1039,21 @@ namespace gch
         : base (gch::tag::bind, remote)
       { }
 
+      local_interface_type& move_binding (local_interface_type& other)
+      {
+        return static_cast<local_interface_type&> (operator= (std::move (other)));
+      }
+
+      local_interface_type& move_binding (local_interface_type&& other)
+      {
+        return move_binding (other);
+      }
+
       template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
       reporter_common clone (void) const = delete;
 
       template <typename Tag = remote_tag, tag::enable_if_reporter_b<Tag> = false>
-      local_interface_type& replace_binding (const local_interface_type& other) = delete;
+      local_interface_type& copy_binding (const local_interface_type& other) = delete;
 
       //! enabled for trackers
 
@@ -1064,7 +1074,7 @@ namespace gch
 
       template <typename Tag = remote_tag,
                 tag::enable_if_tracker_b<Tag> = true>
-      local_interface_type& replace_binding (const local_interface_type& other)
+      local_interface_type& copy_binding (const local_interface_type& other)
       {
         if (&other != this)
         {
@@ -1371,37 +1381,37 @@ namespace gch
 
       //! transfers all bindings from `other`; no overwriting
       GCH_CPP14_CONSTEXPR iter
-      transfer_bindings (local_interface_type& other, citer after) noexcept
+      move_bindings (local_interface_type& other, citer after) noexcept
       {
         return base::base_transfer_bindings (other, after);
       }
 
       GCH_CPP14_CONSTEXPR iter
-      transfer_bindings (local_interface_type& other) noexcept
+      move_bindings (local_interface_type& other) noexcept
       {
-        return transfer_bindings (other, cend ());
+        return move_bindings (other, cend ());
       }
 
       GCH_CPP14_CONSTEXPR iter
-      transfer_bindings (local_interface_type&& other, citer after) noexcept
+      move_bindings (local_interface_type&& other, citer after) noexcept
       {
-        return transfer_bindings (other, after);
+        return move_bindings (other, after);
       }
 
       GCH_CPP14_CONSTEXPR iter
-      transfer_bindings (local_interface_type&& other) noexcept
+      move_bindings (local_interface_type&& other) noexcept
       {
-        return transfer_bindings (other, cend ());
+        return move_bindings (other, cend ());
       }
 
-      local_interface_type& transfer_replace_bindings (local_interface_type&& other)
+      local_interface_type& move_replace_bindings (local_interface_type& other)
       {
         return static_cast<local_interface_type&> (base::operator= (std::move (other)));
       }
 
-      local_interface_type& transfer_replace_bindings (local_interface_type& other)
+      local_interface_type& move_replace_bindings (local_interface_type&& other)
       {
-        return transfer_replace_bindings (std::move (other));
+        return move_replace_bindings (other);
       }
 
       //! disabled for reporters
