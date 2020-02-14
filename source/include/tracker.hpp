@@ -434,16 +434,16 @@ namespace gch
     {
     public:
 
-    using local_base_tag       = LocalBaseTag;
-    using remote_base_tag      = tag::tracker_base<RemoteBackend>;
+      using local_base_tag       = LocalBaseTag;
+      using remote_base_tag      = tag::tracker_base<RemoteBackend>;
     
-    using local_base_type      = reporter_base;
-    using remote_base_type     = tracker_base<local_base_tag, RemoteBackend>;
+      using local_base_type      = reporter_base;
+      using remote_base_type     = tracker_base<local_base_tag, RemoteBackend>;
     
-    using local_reporter_type  = reporter_base;
-    using remote_reporter_type = reporter_base<remote_base_tag, local_base_tag>;
+      using local_reporter_type  = reporter_base;
+      using remote_reporter_type = reporter_base<remote_base_tag, local_base_tag>;
 
-    using base = reporter_base_common<reporter_base, remote_base_type>;
+      using base = reporter_base_common<reporter_base, remote_base_type>;
 
     private:
 

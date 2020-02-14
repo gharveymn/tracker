@@ -1415,6 +1415,11 @@ struct mix
     : reporter (tag::bind, tkr1),
       tracker  (tag::bind, { tkr2 })
   { }
+  
+  bool has_uses (void) const noexcept
+  {
+    return std::any_of (begin (), end (), [] (const standalone_tracker<remote::tracker<mix, tag::intrusive>>& e) { return e.has_remotes (); });
+  }
 };
 
 int main()
