@@ -1,5 +1,5 @@
-EXECUTE_PROCESS(COMMAND "git submodule update --init -- \"external/create-package\""
-                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+EXECUTE_PROCESS(COMMAND git submodule update --init -- "external/create-package"
+                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
 INCLUDE("${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmake" OPTIONAL)
 
