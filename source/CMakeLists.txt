@@ -1,7 +1,6 @@
 IF(NOT HAS_CREATE_PACKAGE)
-  EXECUTE_PROCESS(COMMAND git submodule update --init -- "external/create-package"
-                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                  OUTPUT_QUIET)
+  EXECUTE_PROCESS(COMMAND git submodule --quiet update --init -- "external/create-package"
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
   INCLUDE("${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmake")
 ENDIF()
 
