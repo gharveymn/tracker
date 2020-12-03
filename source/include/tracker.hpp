@@ -393,7 +393,7 @@ namespace gch
       }
 
       GCH_NODISCARD
-      std::size_t get_position (void) const noexcept
+      constexpr std::size_t get_position (void) const noexcept
       {
         return 0;
       }
@@ -707,6 +707,19 @@ namespace gch
         while (first != last)
           first = base_debind (first);
         return rptrs_erase (last, last);
+      }
+  
+      //! safe
+      template <typename Pred>
+      void base_remove_if (Pred pred)
+      {
+        std::for_each (m_rptrs.begin (), m_rptrs.end (),
+                       [&pred] (const reporter_type& e)
+                       {
+                         if (pred (e))
+                           e.reset_remote_tracking ();
+                       });
+        m_rptrs.remove_if (pred);
       }
 
     private:
@@ -1368,6 +1381,14 @@ namespace gch
       {
         return base::base_get_offset (pos);
       }
+      
+      void debind (const remote_type& r)
+      {
+        auto find_pred = [&r] (const remote_type& e) { return &e == &r; };
+        iter pos = std::find_if (begin (), end (), find_pred);
+        while (pos != end ())
+          pos = std::find_if (debind (pos), end (), find_pred);
+      }
 
       iter debind (citer pos)
       {
@@ -1485,6 +1506,8 @@ namespace gch
         bind (args...);
         return bind (r);
       }
+      
+      
 
     private:
 

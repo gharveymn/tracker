@@ -606,7 +606,7 @@ public:
 
   void transfer_from (nonintruded_parent_temp& other)
   {
-    m_children.transfer_bindings (other.m_children);
+    m_children.move_bindings (other.m_children);
   }
 
   template <typename ...Args>
@@ -1537,6 +1537,78 @@ struct mix
   { }
 };
 
+void test_debinding (void)
+{
+  std::cout << "testing unbinding" << std::endl;
+  
+  constexpr auto num_trs = 6;
+  std::array<standalone_tracker<remote::standalone_tracker>, num_trs> ts;
+  
+  auto disp_tracker = [&ts] (std::size_t idx)
+  {
+    std::cout << "  " << idx << " [ ";
+    const auto& tr = ts[idx];
+    for (const auto& cmp : ts)
+    {
+      auto it = std::find_if (tr.begin (), tr.end (),
+                              [&cmp] (const standalone_tracker<remote::standalone_tracker>& e)
+                              {
+                                return &e == &cmp;
+                              });
+      if (it != tr.end ())
+        std::cout << "X ";
+      else
+        std::cout << "  ";
+    }
+    std::cout << "]" << std::endl;
+  };
+  
+  auto disp_all = [&ts, &disp_tracker] (void)
+  {
+    std::cout << "{     ";
+    for (std::size_t i = 0; i < ts.size (); ++i)
+      std::cout << i << " ";
+    std::cout << std::endl;
+    for (std::size_t i = 0; i < ts.size (); ++i)
+      disp_tracker (i);
+    std::cout << "}" << std::endl;
+  };
+  
+  ts[0].bind (ts[1]);
+  auto it = ts[0].bind (ts[2]);
+  ts[0].bind (ts[3]);
+  ts[0].bind (ts[4]);
+  ts[0].bind (ts[5]);
+  
+  auto first = ts[1].bind (ts[2]);
+  ts[1].bind (ts[3]);
+  auto last = ts[1].bind (ts[4]);
+  ts[1].bind (ts[5]);
+  
+  disp_all ();
+  
+  ts[0].debind (it);
+  
+  disp_all ();
+  
+  ts[4].bind (ts[0]);
+  ts[0].debind (ts[4]);
+  
+  disp_all ();
+  
+  ts[1].debind (first, last);
+  
+  disp_all ();
+  
+  ts[0].clear ();
+  
+  disp_all ();
+  
+  ts[1].clear ();
+  
+  disp_all ();
+}
+
 int main()
 {
   try
@@ -1547,6 +1619,9 @@ int main()
     mix mx (mix_tkr, mix_rptr);
     if (mx.has_remote ())
       mix& rem = mix_rptr.get_remote ();
+    
+    test_debinding ();
+    return 0;
 
     std::cout << test_reporter<child, parent> ().count () << std::endl;
     std::cout
