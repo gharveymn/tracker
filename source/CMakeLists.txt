@@ -5,7 +5,7 @@ IF(NOT HAS_CREATE_PACKAGE)
 ENDIF()
 
 CREATE_PACKAGE(AUTHOR       gharveymn
-               DEPENDENCIES optional_ref plf_list
+               DEPENDENCIES plf_list
                HEADERS      tracker.hpp)
 
 IF(TRACKER_BUILD_TESTS)
@@ -14,4 +14,3 @@ IF(TRACKER_BUILD_TESTS)
 ELSE()
   MESSAGE(STATUS "Testing is disabled.")
 ENDIF()
-

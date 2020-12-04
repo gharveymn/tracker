@@ -2,10 +2,6 @@
 	path = external/plf_list
 	url = git@github.com:gharveymn/plf_list.git
 	branch = master
-[submodule "external/optional_ref"]
-	path = external/optional_ref
-	url = git@github.com:gharveymn/optional_ref.git
-	branch = master
 [submodule "external/create-package"]
 	path = external/create-package
 	url = git@github.com:gharveymn/create-package.git
