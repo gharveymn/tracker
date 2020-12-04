@@ -11,7 +11,6 @@
 #if ! defined (tracker_hpp)
 #define tracker_hpp 1
 
-#include <optional_ref.hpp>
 #include <plf_list.h>
 
 #include <algorithm>
@@ -267,6 +266,7 @@ namespace gch
     public:
       using derived_type     = Derived;
       using remote_base_type = RemoteBase;
+      using remote_base_ptr  = remote_base_type *;
 
       reporter_base_common            (void)                            = default;
       reporter_base_common            (const reporter_base_common&)     = default;
@@ -276,7 +276,7 @@ namespace gch
       ~reporter_base_common           (void)                            = default;
 
       constexpr reporter_base_common (tag::track_t, remote_base_type& remote) noexcept
-        : m_remote_base (remote)
+        : m_remote_base (&remote)
       { }
 
       void swap (reporter_base_common& other) noexcept
@@ -287,19 +287,19 @@ namespace gch
 
       void track (remote_base_type& remote) noexcept
       {
-        m_remote_base.emplace (remote);
+        m_remote_base = &remote;
       }
 
       GCH_NODISCARD
       constexpr bool is_tracked (void) const noexcept
       {
-        return m_remote_base.has_value ();
+        return nullptr != m_remote_base;
       }
 
       GCH_NODISCARD
       constexpr bool is_tracking (remote_base_type& remote) const noexcept
       {
-        return m_remote_base.contains (remote);
+        return &remote == m_remote_base;
       }
 
       GCH_NODISCARD
@@ -320,7 +320,7 @@ namespace gch
       // local asymmetric debind (unsafe)
       void wipe (void) noexcept
       {
-        m_remote_base.reset ();
+        m_remote_base = nullptr;
       }
 
       // symmetric debind (safe)
@@ -336,9 +336,7 @@ namespace gch
       }
 
     private:
-
-      optional_ref<remote_base_type> m_remote_base;
-
+      remote_base_ptr m_remote_base = nullptr;
     };
 
     template <typename LocalBaseTag>
@@ -415,7 +413,6 @@ namespace gch
         base::track (remote);
         return *this;
       }
-
     };
 
     template <typename LocalBaseTag>
@@ -539,9 +536,7 @@ namespace gch
       }
 
     private:
-
       remote_access_type m_self;
-
     };
 
     template <typename RemoteBaseTag>
@@ -1021,23 +1016,17 @@ namespace gch
       {
         return get_remote_interface ().get_parent ();
       }
-
+  
       GCH_NODISCARD
-      constexpr optional_ref<remote_type> get_maybe_remote (void) const noexcept
+      constexpr remote_type * get_remote_ptr (void) const noexcept
       {
-        return has_remote () ? get_remote () : optional_ref<remote_type> (nullopt);
+        return has_remote () ? &get_remote_interface ().get_parent () : nullptr;
       }
 
       GCH_NODISCARD
       constexpr remote_interface_type& get_remote_interface (void) const noexcept
       {
         return static_cast<remote_interface_type&> (base::get_remote_base ());
-      }
-
-      GCH_NODISCARD
-      constexpr optional_ref<remote_type> get_maybe_remote_interface (void) const noexcept
-      {
-        return has_remote () ? get_remote_interface () : optional_ref<remote_type> (nullopt);
       }
 
       local_interface_type& rebind (remote_interface_type& new_remote)

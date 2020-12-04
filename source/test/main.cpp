@@ -1618,25 +1618,21 @@ int main()
 
     mix mx (mix_tkr, mix_rptr);
     if (mx.has_remote ())
+    {
       mix& rem = mix_rptr.get_remote ();
+      std::cout << rem.num_remotes () << std::endl;
+    }
     
     test_debinding ();
-    return 0;
 
     std::cout << test_reporter<child, parent> ().count () << std::endl;
-    std::cout
-      << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count ()
-      << std::endl;
+    std::cout << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
 
     std::cout << perf_create<child, parent> ().count () << std::endl;
-    std::cout
-      << perf_create<nonintruded_child, nonintruded_parent> ().count ()
-      << std::endl;
+    std::cout << perf_create<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
     std::cout << perf_access<child, parent> ().count () << std::endl;
-    std::cout
-      << perf_access<nonintruded_child, nonintruded_parent> ().count ()
-      << std::endl;
+    std::cout << perf_access<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
 
     plf::list<int> x = {1, 2, 3, 4};
@@ -1665,11 +1661,11 @@ int main()
     std::cout << sa_tkr.num_remotes () << std::endl;
     std::cout << &sa_tkr.front () << std::endl << std::endl;
 
-    assert (sa_rptr.get_maybe_remote ().has_value ());
+    assert (sa_rptr.get_remote_ptr ());
 
     sa_rptr.debind ();
 
-    assert (! sa_rptr.get_maybe_remote ().has_value ());
+    assert (! sa_rptr.get_remote_ptr ());
 
     std::cout << sa_rptr.has_remote () << std::endl;
     std::cout << sa_tkr.num_remotes () << std::endl << std::endl;
