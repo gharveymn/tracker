@@ -7,9 +7,8 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-//! standalone
-#if ! defined (tracker_hpp)
-#define tracker_hpp 1
+#ifndef GCH_TRACKER_HPP
+#define GCH_TRACKER_HPP
 
 #include <plf_list.h>
 
@@ -65,12 +64,14 @@ namespace gch
 
   namespace tag
   {
+    
     struct intrusive;
     struct nonintrusive;
     struct standalone;
 
     // for symmetric constructtors
     GCH_INLINE_VARS constexpr struct bind_t  { bind_t  (void) = default; } bind;
+    
   }
 
   //////////////
@@ -345,7 +346,6 @@ namespace gch
                                     reporter_base<tag::reporter_base, LocalBaseTag>>
     {
     public:
-
       using local_base_tag       = LocalBaseTag;
       using remote_base_tag      = tag::reporter_base;
 
@@ -421,7 +421,6 @@ namespace gch
                                     tracker_base<LocalBaseTag>>
     {
     public:
-
       using local_base_tag       = LocalBaseTag;
       using remote_base_tag      = tag::tracker_base;
 
@@ -434,11 +433,9 @@ namespace gch
       using base = reporter_base_common<reporter_base, remote_base_type>;
 
     private:
-
       using remote_access_type  = typename remote_base_type::access_type;
 
     public:
-
       reporter_base            (void)                     = default;
       reporter_base            (const reporter_base&)     = default;
       reporter_base            (reporter_base&&) noexcept = default;
@@ -549,7 +546,6 @@ namespace gch
       using remote_base_tag = RemoteBaseTag;
 
     protected:
-
       // Store pointers to the base types. Downcast when needed.
       using reporter_type   = reporter_base<local_base_tag, remote_base_tag>;
       using reporter_list   = tracker_container<reporter_type>;
@@ -718,9 +714,7 @@ namespace gch
       }
 
     private:
-
       reporter_list m_rptrs;
-
     };
 
     template <>
@@ -728,7 +722,6 @@ namespace gch
       : public tracker_base_common<tag::reporter_base>
     {
     public:
-
       using remote_reporter_type = remote_base_type;
 
       tracker_base            (void)                    = default;
@@ -793,7 +786,6 @@ namespace gch
       {
         return base_bind_before (rptrs_cend (), first, last);
       }
-
     };
 
     //! Remote is one of the non-base classes defined here
@@ -802,7 +794,6 @@ namespace gch
       : public tracker_base_common<tag::tracker_base>
     {
     public:
-
       using remote_reporter_type = typename remote_base_type::local_reporter_type;
 
       tracker_base            (void)                    = default;
@@ -876,7 +867,6 @@ namespace gch
       {
         return base_bind_before (rptrs_cend (), first, last);
       }
-
     }; // tracker_base
 
     template <typename Interface>
@@ -894,7 +884,6 @@ namespace gch
       : private reporter_base<tag::reporter_base, typename RemoteTag::base_tag>
     {
     public:
-
       using base = reporter_base<tag::reporter_base, typename RemoteTag::base_tag>;
 
       using local_interface_type = reporter<Parent, RemoteTag, IntrusiveTag>;
@@ -915,12 +904,10 @@ namespace gch
       friend remote_common_type;
 
     private:
-
       using local_reporter_type  = base;
       using remote_reporter_type = typename base::remote_reporter_type;
 
     public:
-
       using base::debind;
       using base::get_position;
       using base::reset;
@@ -1089,7 +1076,6 @@ namespace gch
       }
 
     private:
-
     }; // reporter_common
 
     ////////////////////
@@ -1101,7 +1087,6 @@ namespace gch
       : private tracker_base<typename RemoteTag::base_tag>
     {
     public:
-
       using base                  = tracker_base<typename RemoteTag::base_tag>;
 
       using local_interface_type  = tracker<Parent, RemoteTag, IntrusiveTag>;
@@ -1125,7 +1110,6 @@ namespace gch
       class citer;
 
     private:
-
       using local_reporter_type  = typename base::local_reporter_type;
       using remote_reporter_type = typename base::remote_reporter_type;
 
@@ -1140,7 +1124,6 @@ namespace gch
         using reporter_type         = typename ReporterIt::value_type;
 
       public:
-
         using difference_type   = typename reporter_iter::difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type        = remote_type;
@@ -1157,13 +1140,11 @@ namespace gch
         ~iter_common (void)                               = default;
 
       protected:
-
         constexpr /* implicit */ iter_common (reporter_iter it)
             : m_iter (it)
         { }
 
       public:
-
         iter_common& operator++ (void) noexcept
         {
           ++m_iter;
@@ -1208,16 +1189,13 @@ namespace gch
         }
 
       protected:
-
         /* implicit */ operator reporter_iter (void) const noexcept
         {
           return m_iter;
         }
 
       private:
-
         reporter_iter m_iter;
-
       }; // iter_common
 
     public:
@@ -1253,7 +1231,6 @@ namespace gch
         {
           return base::get_remote_interface ().get_parent ();
         }
-
       }; // iter
 
       class citer : public iter_common<rptr_citer>
@@ -1496,10 +1473,7 @@ namespace gch
         return bind (r);
       }
       
-      
-
     private:
-
     }; // tracker_common
 
     /////////////////////////
@@ -1509,11 +1483,9 @@ namespace gch
     template <typename Parent>
     class nonintrusive_common
     {
-
       using parent_type = Parent;
-
+      
     public:
-
       nonintrusive_common            (void)                           = default;
       nonintrusive_common            (const nonintrusive_common&)     = default;
       nonintrusive_common            (nonintrusive_common&&) noexcept = default;
@@ -1540,11 +1512,9 @@ namespace gch
       }
 
     private:
-
       parent_type& m_parent;
-
     }; // nonintrusive_common
-
+    
   } // detail
 
   //////////////////////////
@@ -1556,7 +1526,6 @@ namespace gch
     : public detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>
   {
   public:
-
     using base = detail::reporter_common<reporter<Derived, RemoteTag, tag::intrusive>>;
 
     using local_tag             = typename base::local_tag;
@@ -1594,7 +1563,6 @@ namespace gch
     {
       return static_cast<const derived_type&> (*this);
     }
-
   }; // reporter
 
   /////////////////////////
@@ -1606,8 +1574,8 @@ namespace gch
     : public detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>
   {
     using base = detail::tracker_common<tracker<Derived, RemoteTag, tag::intrusive>>;
+    
   public:
-
     using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
 
@@ -1643,7 +1611,6 @@ namespace gch
     {
       return static_cast<const derived_type&> (*this);
     }
-
   }; // tracker
 
   /////////////////////////////
@@ -1659,7 +1626,6 @@ namespace gch
     using access_base = detail::nonintrusive_common<Parent>;
 
   public:
-
     using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
 
@@ -1703,7 +1669,6 @@ namespace gch
     explicit reporter (parent_type& parent)
       : access_base (parent)
     { }
-
   }; // reporter
 
   ////////////////////////////
@@ -1721,7 +1686,6 @@ namespace gch
     using init_list = typename base::init_list;
 
   public:
-
     using local_tag             = typename base::local_tag;
     using remote_tag            = RemoteTag;
 
@@ -1779,7 +1743,6 @@ namespace gch
       : base        (tag::bind, init),
         access_base (parent)
     { }
-
   }; // tracker
 
   template <typename RemoteTag>
