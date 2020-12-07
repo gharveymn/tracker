@@ -10,6 +10,7 @@
 #include <random>
 #include <list>
 #include <sstream>
+#include <array>
 
 using namespace gch;
 

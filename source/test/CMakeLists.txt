@@ -2,25 +2,24 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ADD_EXECUTABLE(test_tracker main.cpp)
 TARGET_LINK_LIBRARIES(test_tracker tracker)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  SET(COMPILE_OPTS -fno-rtti --coverage -Wall -Wextra)
-  SET(LINK_OPTS --coverage)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  SET(COMPILE_OPTS -fno-rtti -Wall -Wextra)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  SET(COMPILE_OPTS /GR-)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-      
-endif()
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC -stdlib=libc++ -ftime-trace --coverage -fno-rtti -Wall -Wextra)
+  TARGET_LINK_OPTIONS(test_tracker PUBLIC -Wl,--allow-multiple-definition --coverage)
+  TARGET_LINK_LIBRARIES(test_tracker c++ c++abi)
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC -fno-rtti -Wall -Wextra)
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC /W4 /GR-)
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+
+ENDIF()
 
 if (UNIX)
-  LIST(APPEND COMPILE_OPTS -fsanitize=address)
-  LIST(APPEND LINK_OPTS -fsanitize=address)
+  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC -fsanitize=address)
+  TARGET_LINK_OPTIONS(test_tracker PUBLIC -fsanitize=address)
 endif()
 
 SET_TARGET_PROPERTIES(test_tracker PROPERTIES
                       CXX_STANDARD          11
                       CXX_STANDARD_REQUIRED NO
-                      CXX_EXTENSIONS        NO
-                      COMPILE_OPTIONS       "${COMPILE_OPTS}"
-                      LINK_OPTIONS          "${LINK_OPTS}")
+                      CXX_EXTENSIONS        NO)
