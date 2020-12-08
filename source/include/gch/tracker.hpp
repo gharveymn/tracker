@@ -555,6 +555,7 @@ namespace gch
       using rptr_criter     = typename reporter_list::const_reverse_iterator;
       using rptr_ref        = typename reporter_list::reference;
       using rptr_cref       = typename reporter_list::const_reference;
+      using rptr_size_type  = typename reporter_list::size_type;
 
     public:
 
@@ -613,12 +614,6 @@ namespace gch
         other.repoint_reporters (other.rptrs_begin (), other.rptrs_end ());
       }
 
-      GCH_NODISCARD
-      std::size_t num_remotes (void) const noexcept
-      {
-        return m_rptrs.size ();
-      }
-
       rptr_iter base_transfer_bindings (tracker_base_common& src, rptr_citer pos) noexcept
       {
         rptr_iter pivot = src.rptrs_begin ();
@@ -649,7 +644,9 @@ namespace gch
       GCH_NODISCARD rptr_ref    rptrs_back    (void)                { return m_rptrs.back ();    }
       GCH_NODISCARD rptr_cref   rptrs_back    (void) const          { return m_rptrs.back ();    }
 
-      GCH_NODISCARD bool        rptrs_empty   (void) const noexcept { return m_rptrs.empty ();   }
+      GCH_NODISCARD bool           empty    (void) const noexcept { return m_rptrs.empty ();    }
+      GCH_NODISCARD rptr_size_type size     (void) const noexcept { return m_rptrs.size ();     }
+      GCH_NODISCARD rptr_size_type max_size (void) const noexcept { return m_rptrs.max_size (); }
 
       template <typename ...Args>
       rptr_iter rptrs_emplace (rptr_citer pos, Args&&... args)
@@ -1106,8 +1103,8 @@ namespace gch
 
       friend remote_common_type;
 
-      class iter;
-      class citer;
+      class iterator;
+      class const_iterator;
 
     private:
       using local_reporter_type  = typename base::local_reporter_type;
@@ -1200,22 +1197,22 @@ namespace gch
 
     public:
 
-      class iter : public iter_common<rptr_iter>
+      class iterator : public iter_common<rptr_iter>
       {
         using base = iter_common<rptr_iter>;
       public:
 
         friend tracker_common;
-        friend citer;
+        friend const_iterator;
 
         using base::base;
-
-        iter            (void)              = default;
-        iter            (const iter&)       = default;
-        iter            (iter&&) noexcept   = default;
-        iter& operator= (const iter&) &     = default;
-        iter& operator= (iter&&) & noexcept = default;
-        ~iter           (void)              = default;
+  
+        iterator            (void)                  = default;
+        iterator            (const iterator&)       = default;
+        iterator            (iterator&&) noexcept   = default;
+        iterator& operator= (const iterator&) &     = default;
+        iterator& operator= (iterator&&) & noexcept = default;
+        ~iterator           (void)                  = default;
 
         constexpr remote_type& operator* (void) const noexcept
         {
@@ -1233,7 +1230,7 @@ namespace gch
         }
       }; // iter
 
-      class citer : public iter_common<rptr_citer>
+      class const_iterator : public iter_common<rptr_citer>
       {
         using base = iter_common<rptr_citer>;
       public:
@@ -1241,15 +1238,15 @@ namespace gch
         friend tracker_common;
 
         using base::base;
+  
+        const_iterator            (void)                        = default;
+        const_iterator            (const const_iterator&)       = default;
+        const_iterator            (const_iterator&&) noexcept   = default;
+        const_iterator& operator= (const const_iterator&) &     = default;
+        const_iterator& operator= (const_iterator&&) & noexcept = default;
+        ~const_iterator           (void)                        = default;
 
-        citer            (void)               = default;
-        citer            (const citer&)       = default;
-        citer            (citer&&) noexcept   = default;
-        citer& operator= (const citer&) &     = default;
-        citer& operator= (citer&&) & noexcept = default;
-        ~citer           (void)               = default;
-
-        constexpr /* implicit */ citer (iter it) noexcept
+        constexpr /* implicit */ const_iterator (iterator it) noexcept
           : base (rptr_iter (it))
         { }
 
@@ -1267,20 +1264,26 @@ namespace gch
         {
           return base::get_remote_interface ().get_parent ();
         }
-
       }; // citer
+  
+      using reverse_iterator        = std::reverse_iterator<iterator>;
+      using const_reverse_iterator  = std::reverse_iterator<const_iterator>;
+      using reference               = remote_type&;
+      using const_reference         = const remote_type&;
+      using size_type               = typename base::reporter_list::size_type;
+      using difference_type         = typename base::reporter_list::difference_type;
+      using value_type              = remote_type;
+      using allocator_type          = typename base::reporter_list::allocator_type;
 
-      using riter  = std::reverse_iterator<iter>;
-      using criter = std::reverse_iterator<citer>;
-      using ref    = remote_type&;
-      using cref   = const remote_type&;
+      using iter   = iterator;
+      using citer  = const_iterator;
+      using riter  = reverse_iterator;
+      using criter = const_reverse_iterator;
+      using ref    = reference;
+      using cref   = const_reference;
 
       using init_list = std::initializer_list<
         std::reference_wrapper<remote_interface_type>>;
-
-      using base::clear;
-      using base::wipe;
-      using base::num_remotes;
 
       tracker_common            (void)                      = default;
       tracker_common            (const tracker_common&)     = delete;
@@ -1339,11 +1342,18 @@ namespace gch
 
       GCH_NODISCARD ref    back          (void)                { return *--end ();              }
       GCH_NODISCARD cref   back          (void) const          { return *--end ();              }
+      
+      using base::empty;
+      using base::size;
 
-      GCH_NODISCARD bool   has_remotes   (void) const noexcept { return ! base::rptrs_empty (); }
+      GCH_NODISCARD bool   has_remotes   (void) const noexcept { return ! empty (); }
+      GCH_NODISCARD size_type num_remotes (void) const noexcept { return size (); }
+  
+      using base::clear;
+      using base::wipe;
 
       GCH_NODISCARD
-      GCH_CPP17_CONSTEXPR std::size_t get_offset (citer pos) const noexcept
+      GCH_CPP17_CONSTEXPR size_type get_offset (citer pos) const noexcept
       {
         return base::base_get_offset (pos);
       }
