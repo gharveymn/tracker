@@ -122,10 +122,10 @@ using base_type = typename LocalTag::template interface_type<TRemoteTag<Child<Lo
 template <template <typename ...> class Child,
           template <typename ...> class TRemoteTag>
 struct iparent_r
-  : base_type<tag::intrusive::reporter<iparent_r<Child, TRemoteTag>>, Child, TRemoteTag>
+  : base_type<remote::intrusive_reporter<iparent_r<Child, TRemoteTag>>, Child, TRemoteTag>
 {
 
-  using child_type = Child<tag::intrusive::reporter<iparent_r>>;
+  using child_type = Child<remote::intrusive_reporter<iparent_r>>;
 
   iparent_r (void) = default;
 
@@ -135,20 +135,20 @@ template <template <typename ...> class Child, template <typename ...> class TRe
 struct nparent_r
 {
 
-  using child_type = Child<tag::nonintrusive::reporter<nparent_r>>;
+  using child_type = Child<remote::reporter<nparent_r>>;
 
   nparent_r (void) = default;
 
-  base_type<tag::nonintrusive::reporter<nparent_r>, Child, TRemoteTag> m_reporter;
+  base_type<remote::reporter<nparent_r>, Child, TRemoteTag> m_reporter;
 
 };
 
 template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
 struct iparent_t
-  : base_type<tag::intrusive::tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
+  : base_type<remote::intrusive_tracker<iparent_t<Child, TRemoteTag>>, Child, TRemoteTag>
 {
 
-  using child_type = Child<tag::intrusive::tracker<iparent_t>>;
+  using child_type = Child<remote::intrusive_tracker<iparent_t>>;
 
   iparent_t (void) = default;
 
@@ -166,7 +166,7 @@ template <template <typename ...> class Child, template <typename ...> class TRe
 struct nparent_t
 {
 
-  using child_type = Child<tag::nonintrusive::tracker<nparent_t>>;
+  using child_type = Child<remote::tracker<nparent_t>>;
 
   nparent_t (void) = default;
 
@@ -175,53 +175,53 @@ struct nparent_t
     return child_type (m_tracker);
   }
 
-  base_type<tag::nonintrusive::tracker<nparent_t>, Child, TRemoteTag> m_tracker;
+  base_type<remote::tracker<nparent_t>, Child, TRemoteTag> m_tracker;
 
 };
 
-template struct iparent_r<ichild_r, tag::intrusive::reporter   >;
-template struct iparent_r<nchild_r, tag::nonintrusive::reporter>;
-template struct iparent_r<ichild_t, tag::intrusive::tracker    >;
-template struct iparent_r<nchild_t, tag::nonintrusive::tracker >;
+template struct iparent_r<ichild_r, remote::intrusive_reporter >;
+template struct iparent_r<nchild_r, remote::reporter           >;
+template struct iparent_r<ichild_t, remote::intrusive_tracker  >;
+template struct iparent_r<nchild_t, remote::tracker            >;
 
-template struct nparent_r<ichild_r, tag::intrusive::reporter   >;
-template struct nparent_r<nchild_r, tag::nonintrusive::reporter>;
-template struct nparent_r<ichild_t, tag::intrusive::tracker    >;
-template struct nparent_r<nchild_t, tag::nonintrusive::tracker >;
+template struct nparent_r<ichild_r, remote::intrusive_reporter   >;
+template struct nparent_r<nchild_r, remote::reporter              >;
+template struct nparent_r<ichild_t, remote::intrusive_tracker    >;
+template struct nparent_r<nchild_t, remote::tracker              >;
 
-template struct iparent_t<ichild_r, tag::intrusive::reporter   >;
-template struct iparent_t<nchild_r, tag::nonintrusive::reporter>;
-template struct iparent_t<ichild_t, tag::intrusive::tracker    >;
-template struct iparent_t<nchild_t, tag::nonintrusive::tracker >;
+template struct iparent_t<ichild_r, remote::intrusive_reporter   >;
+template struct iparent_t<nchild_r, remote::reporter              >;
+template struct iparent_t<ichild_t, remote::intrusive_tracker    >;
+template struct iparent_t<nchild_t, remote::tracker               >;
 
-template struct nparent_t<ichild_r, tag::intrusive::reporter   >;
-template struct nparent_t<nchild_r, tag::nonintrusive::reporter>;
-template struct nparent_t<ichild_t, tag::intrusive::tracker    >;
-template struct nparent_t<nchild_t, tag::nonintrusive::tracker >;
+template struct nparent_t<ichild_r, remote::intrusive_reporter   >;
+template struct nparent_t<nchild_r, remote::reporter              >;
+template struct nparent_t<ichild_t, remote::intrusive_tracker    >;
+template struct nparent_t<nchild_t, remote::tracker               >;
 
-template struct ichild_r<tag::intrusive::reporter   <iparent_r<ichild_r, tag::intrusive::reporter>>>;
-template struct ichild_r<tag::nonintrusive::reporter<nparent_r<ichild_r, tag::intrusive::reporter>>>;
-template struct ichild_r<tag::intrusive::tracker    <iparent_t<ichild_r, tag::intrusive::reporter>>>;
-template struct ichild_r<tag::nonintrusive::tracker <nparent_t<ichild_r, tag::intrusive::reporter>>>;
+template struct ichild_r<remote::intrusive_reporter   <iparent_r<ichild_r, remote::intrusive_reporter>>>;
+template struct ichild_r<remote::reporter<nparent_r<ichild_r, remote::intrusive_reporter>>>;
+template struct ichild_r<remote::intrusive_tracker    <iparent_t<ichild_r, remote::intrusive_reporter>>>;
+template struct ichild_r<remote::tracker <nparent_t<ichild_r, remote::intrusive_reporter>>>;
 
-template struct nchild_r<tag::intrusive::reporter   <iparent_r<nchild_r, tag::nonintrusive::reporter>>>;
-template struct nchild_r<tag::nonintrusive::reporter<nparent_r<nchild_r, tag::nonintrusive::reporter>>>;
-template struct nchild_r<tag::intrusive::tracker    <iparent_t<nchild_r, tag::nonintrusive::reporter>>>;
-template struct nchild_r<tag::nonintrusive::tracker <nparent_t<nchild_r, tag::nonintrusive::reporter>>>;
+template struct nchild_r<remote::intrusive_reporter   <iparent_r<nchild_r, remote::reporter>>>;
+template struct nchild_r<remote::reporter<nparent_r<nchild_r, remote::reporter>>>;
+template struct nchild_r<remote::intrusive_tracker    <iparent_t<nchild_r, remote::reporter>>>;
+template struct nchild_r<remote::tracker <nparent_t<nchild_r, remote::reporter>>>;
 
-template struct ichild_t<tag::intrusive::reporter   <iparent_r<ichild_t, tag::intrusive::tracker>>>;
-template struct ichild_t<tag::nonintrusive::reporter<nparent_r<ichild_t, tag::intrusive::tracker>>>;
-template struct ichild_t<tag::intrusive::tracker    <iparent_t<ichild_t, tag::intrusive::tracker>>>;
-template struct ichild_t<tag::nonintrusive::tracker <nparent_t<ichild_t, tag::intrusive::tracker>>>;
+template struct ichild_t<remote::intrusive_reporter   <iparent_r<ichild_t, remote::intrusive_tracker>>>;
+template struct ichild_t<remote::reporter<nparent_r<ichild_t, remote::intrusive_tracker>>>;
+template struct ichild_t<remote::intrusive_tracker    <iparent_t<ichild_t, remote::intrusive_tracker>>>;
+template struct ichild_t<remote::tracker <nparent_t<ichild_t, remote::intrusive_tracker>>>;
 
-template struct nchild_t<tag::intrusive::reporter   <iparent_r<nchild_t, tag::nonintrusive::tracker>>>;
-template struct nchild_t<tag::nonintrusive::reporter<nparent_r<nchild_t, tag::nonintrusive::tracker>>>;
-template struct nchild_t<tag::intrusive::tracker    <iparent_t<nchild_t, tag::nonintrusive::tracker>>>;
-template struct nchild_t<tag::nonintrusive::tracker <nparent_t<nchild_t, tag::nonintrusive::tracker>>>;
+template struct nchild_t<remote::intrusive_reporter   <iparent_r<nchild_t, remote::tracker>>>;
+template struct nchild_t<remote::reporter<nparent_r<nchild_t, remote::tracker>>>;
+template struct nchild_t<remote::intrusive_tracker    <iparent_t<nchild_t, remote::tracker>>>;
+template struct nchild_t<remote::tracker <nparent_t<nchild_t, remote::tracker>>>;
 
-// template struct nchild_t<iparent_r<nchild_t, tracker>, tag::intrusive::reporter>;
+// template struct nchild_t<iparent_r<nchild_t, tracker>, remote::intrusive_reporter>;
 // template struct nchild_t<nparent_r<nchild_t, tracker>, reporter>;
-// template struct nchild_t<iparent_t<nchild_t, tracker>, tag::intrusive::tracker>;
+// template struct nchild_t<iparent_t<nchild_t, tracker>, remote::intrusive_tracker>;
 // template struct nchild_t<nparent_t<nchild_t, tracker>, tracker>;
 
 class parent;
@@ -296,7 +296,7 @@ class parent
 public:
 
   using reporter_type = child;
-  using tracker_type  = tracker<parent, remote::reporter<child, tag::intrusive>>;
+  using tracker_type  = tracker<parent, remote::intrusive_reporter<child>>;
 
   parent (void)
     : m_children (*this)
@@ -481,23 +481,23 @@ void ichild::rebind (iparent& p)
   base::rebind (p);
 }
 
-//template class gch::tracker<int, tag::intrusive::reporter<int>, tag::intrusive>;
-//template class gch::tracker<int, tag::nonintrusive::reporter<int>, tag::intrusive>;
-//template class gch::tracker<int, tag::intrusive::tracker <int>, tag::intrusive>;
-//template class gch::tracker<int, tag::nonintrusive::tracker            <int>, tag::intrusive>;
-//template class gch::tracker<int, tag::intrusive::reporter<int>, tag::nonintrusive>;
-//template class gch::tracker<int, tag::nonintrusive::reporter           <int>, tag::nonintrusive>;
-//template class gch::tracker<int, tag::intrusive::tracker <int>, tag::nonintrusive>;
-//template class gch::tracker<int, tag::nonintrusive::tracker            <int>, tag::nonintrusive>;
+//template class gch::tracker<int, remote::intrusive_reporter<int>, tag::intrusive>;
+//template class gch::tracker<int, remote::reporter<int>, tag::intrusive>;
+//template class gch::tracker<int, remote::intrusive_tracker <int>, tag::intrusive>;
+//template class gch::tracker<int, remote::tracker            <int>, tag::intrusive>;
+//template class gch::tracker<int, remote::intrusive_reporter<int>, tag::nonintrusive>;
+//template class gch::tracker<int, remote::reporter           <int>, tag::nonintrusive>;
+//template class gch::tracker<int, remote::intrusive_tracker <int>, tag::nonintrusive>;
+//template class gch::tracker<int, remote::tracker            <int>, tag::nonintrusive>;
 //
-//template class gch::reporter<int, tag::intrusive::reporter<int>, tag::intrusive>;
-//template class gch::reporter<int, tag::nonintrusive::reporter           <int>, tag::intrusive>;
-//template class gch::reporter<int, tag::intrusive::tracker <int>, tag::intrusive>;
-//template class gch::reporter<int, tag::nonintrusive::tracker            <int>, tag::intrusive>;
-//template class gch::reporter<int, tag::intrusive::reporter<int>, tag::nonintrusive>;
-//template class gch::reporter<int, tag::nonintrusive::reporter           <int>, tag::nonintrusive>;
-//template class gch::reporter<int, tag::intrusive::tracker <int>,  tag::nonintrusive>;
-//template class gch::reporter<int, tag::nonintrusive::tracker            <int>, tag::nonintrusive>;
+//template class gch::reporter<int, remote::intrusive_reporter<int>, tag::intrusive>;
+//template class gch::reporter<int, remote::reporter           <int>, tag::intrusive>;
+//template class gch::reporter<int, remote::intrusive_tracker <int>, tag::intrusive>;
+//template class gch::reporter<int, remote::tracker            <int>, tag::intrusive>;
+//template class gch::reporter<int, remote::intrusive_reporter<int>, tag::nonintrusive>;
+//template class gch::reporter<int, remote::reporter           <int>, tag::nonintrusive>;
+//template class gch::reporter<int, remote::intrusive_tracker <int>,  tag::nonintrusive>;
+//template class gch::reporter<int, remote::tracker            <int>, tag::nonintrusive>;
 
 class nonintruded_child_s;
 class nonintruded_child;
@@ -1568,8 +1568,8 @@ struct mix
   : reporter<mix, remote::standalone_tracker, tag::intrusive>,
     tracker<mix, remote::standalone_reporter, tag::intrusive>
 {
-  mix (standalone_tracker<remote::reporter<mix, tag::intrusive>>& tkr,
-       standalone_reporter<remote::tracker<mix, tag::intrusive>>& rptr)
+  mix (standalone_tracker<remote::intrusive_reporter<mix>>& tkr,
+       standalone_reporter<remote::intrusive_tracker<mix>>& rptr)
     : reporter (tag::bind, tkr),
       tracker  (tag::bind, { rptr })
   { }
@@ -1718,7 +1718,7 @@ void test_iterators (void)
   
   standalone_tracker<remote::tracker<int>>::iter it = tkr.begin ();
   standalone_tracker<remote::tracker<int>>::citer cit = it;
-  
+  (void)cit;
   
   std::cout << "end" << std::endl;
 }
@@ -1727,8 +1727,8 @@ int main()
 {
   try
   {
-    standalone_tracker<remote::reporter<mix, tag::intrusive>> mix_tkr;
-    standalone_reporter<remote::tracker<mix, tag::intrusive>> mix_rptr;
+    standalone_tracker<remote::intrusive::reporter<mix>> mix_tkr;
+    standalone_reporter<remote::intrusive_tracker<mix>> mix_rptr;
 
     mix mx (mix_tkr, mix_rptr);
     if (mx.has_remote ())
@@ -1794,24 +1794,25 @@ int main()
     return 1;
   }
 
-  // std::cout << "itracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  // std::cout << "itracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
-  // std::cout << "itracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  // std::cout << "itracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
-  // std::cout << "ntracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  // std::cout << "ntracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
-  // std::cout << "ntracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  // std::cout << "ntracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::nonintrusive>) << std::endl;
-  // std::cout << "ireporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  // std::cout << "ireporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
-  // std::cout << "ireporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  // std::cout << "ireporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
-  // std::cout << "nreporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  // std::cout << "nreporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
-  // std::cout << "nreporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  // std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::nonintrusive>) << std::endl << std::endl;
+  std::cout << "itracker : ireporter  :" << sizeof (intrusive_tracker<child,  remote::intrusive_reporter<parent>>) << std::endl;
+  std::cout << "itracker : nreporter  :" << sizeof (intrusive_tracker<child,  remote::reporter<parent>>          ) << std::endl;
+  std::cout << "itracker : itracker   :" << sizeof (intrusive_tracker<child,  remote::intrusive_tracker <parent>>) << std::endl;
+  std::cout << "itracker : ntracker   :" << sizeof (intrusive_tracker<child,  remote::tracker <parent>>          ) << std::endl;
+  std::cout << "ntracker : ireporter  :" << sizeof (          tracker<child,  remote::intrusive_reporter<parent>>) << std::endl;
+  std::cout << "ntracker : nreporter  :" << sizeof (          tracker<child,  remote::reporter<parent>>          ) << std::endl;
+  std::cout << "ntracker : itracker   :" << sizeof (          tracker<child,  remote::intrusive_tracker <parent>>) << std::endl;
+  std::cout << "ntracker : ntracker   :" << sizeof (          tracker<child,  remote::tracker <parent>>          ) << std::endl;
+  
+  std::cout << "ireporter : ireporter :" << sizeof (intrusive_reporter<child, remote::intrusive_reporter<parent>>) << std::endl;
+  std::cout << "ireporter : nreporter :" << sizeof (intrusive_reporter<child, remote::reporter<parent>>          ) << std::endl;
+  std::cout << "ireporter : itracker  :" << sizeof (intrusive_reporter<child, remote::intrusive_tracker <parent>>) << std::endl;
+  std::cout << "ireporter : ntracker  :" << sizeof (intrusive_reporter<child, remote::tracker <parent>>          ) << std::endl;
+  std::cout << "nreporter : ireporter :" << sizeof (          reporter<child, remote::intrusive_reporter<parent>>) << std::endl;
+  std::cout << "nreporter : nreporter :" << sizeof (          reporter<child, remote::reporter<parent>>          ) << std::endl;
+  std::cout << "nreporter : itracker  :" << sizeof (          reporter<child, remote::intrusive_tracker <parent>>) << std::endl;
+  std::cout << "nreporter : ntracker  :" << sizeof (          reporter<child, remote::tracker <parent>>          ) << std::endl << std::endl;
 
-  // std::cout << "iter  :" << sizeof (tracker<child, tag::intrusive::reporter<parent>, tag::nonintrusive>::iter) << std::endl;
+  std::cout << "iter  :" << sizeof (tracker<child, remote::reporter<parent>>::iter) << std::endl;
 
   return 0;
 }
