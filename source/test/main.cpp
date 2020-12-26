@@ -20,6 +20,39 @@ constexpr std::size_t multiplier = 1;
 constexpr std::size_t multiplier = 100;
 #endif
 
+// template <typename Function>
+// struct test_functor
+// {
+//   template <typename ...Args>
+//   void operator() (Args&&... args) const
+//   {
+//     print_header ();
+//     m_test_function (std::forward<Args> (args)...);
+//     print_footer ();
+//   }
+//
+//   void print_header (void) const
+//   {
+//     std::cout << m_header << std::flush;
+//   }
+//
+//   void print_footer (void) const
+//   {
+//     std::cout << m_footer << std::flush;
+//   }
+//
+//   const char * m_header;
+//   Function     m_test_function;
+//   const char * m_footer;
+// };
+
+// template <typename Function>
+// constexpr test_functor<typename std::decay<Function>::type>
+// make_test_functor (const char *header, Function&& tf)
+// {
+//   return { header, std::forward<Function> (tf), "pass\n"};
+// }
+
 template <typename RemoteTag>
 struct ichild_r : reporter<ichild_r<RemoteTag>, RemoteTag, tag::intrusive>
 {
@@ -123,6 +156,9 @@ struct iparent_t
   {
     return child_type (*this);
   }
+  
+  // make sure we can put get_parent in derived class
+  constexpr int get_parent (void) const noexcept { return 1; }
 
 };
 
@@ -280,7 +316,7 @@ public:
 
   void transfer_from (parent& other)
   {
-    m_children.move_bindings (other.m_children);
+    m_children.splice_back (other.m_children);
   }
 
   template <typename ...Args>
@@ -403,7 +439,7 @@ public:
 
   void transfer_from (iparent& other)
   {
-    move_bindings (other);
+    splice_back (other);
   }
 
   template <typename ...Args>
@@ -497,7 +533,7 @@ public:
   {
     if (&other != this)
       {
-        m_reporter.copy_binding (other.m_reporter);
+        m_reporter.replace_binding (other.m_reporter);
         m_name = other.m_name;
       }
     return *this;
@@ -553,7 +589,7 @@ public:
   nonintruded_child& operator= (const nonintruded_child& other)
   {
     if (&other != this)
-      m_reporter.copy_binding (other.m_reporter);
+      m_reporter.replace_binding (other.m_reporter);
     return *this;
   }
 
@@ -608,7 +644,7 @@ public:
 
   void transfer_from (nonintruded_parent_temp& other)
   {
-    m_children.move_bindings (other.m_children);
+    m_children.splice_back (other.m_children);
   }
 
   template <typename ...Args>
@@ -692,7 +728,7 @@ public:
 
   self_parent& operator= (self_parent&& other) noexcept
   {
-    m_tracker.move_replace_bindings (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -735,7 +771,7 @@ public:
 
   anon_self_parent& operator= (anon_self_parent&& other) noexcept
   {
-    m_tracker.move_replace_bindings (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -778,7 +814,7 @@ public:
 
   anon1& operator= (anon1&& other) noexcept
   {
-    m_tracker.move_replace_bindings (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -823,7 +859,7 @@ public:
 
   anon2& operator= (anon2&& other) noexcept
   {
-    m_tracker.move_replace_bindings (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     return *this;
   }
 
@@ -874,7 +910,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker.copy_replace_bindings (other.m_tracker);
+        m_tracker.replace_bindings (other.m_tracker);
         m_name = other.m_name;
       }
     return *this;
@@ -882,7 +918,7 @@ public:
 
   named1& operator= (named1&& other) noexcept
   {
-    m_tracker.move_replace_bindings (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -956,7 +992,7 @@ public:
   {
     if (&other != this)
       {
-        m_tracker.copy_replace_bindings (other.m_tracker);
+        m_tracker.replace_bindings (other.m_tracker);
         m_name = other.m_name;
       }
     return *this;
@@ -964,7 +1000,7 @@ public:
 
   named2& operator= (named2&& other) noexcept
   {
-    m_tracker.move_replace_bindings (other.m_tracker);
+    m_tracker.replace_bindings (std::move (other.m_tracker));
     m_name = std::move (other.m_name);
     return *this;
   }
@@ -1541,10 +1577,10 @@ struct mix
 
 void test_debinding (void)
 {
-  std::cout << "testing unbinding" << std::endl;
-  
   constexpr auto num_trs = 6;
   std::array<standalone_tracker<remote::standalone_tracker>, num_trs> ts;
+  
+  std::cout << "test debinding" << std::endl;
   
   auto disp_tracker = [&ts] (std::size_t idx)
   {
@@ -1589,7 +1625,7 @@ void test_debinding (void)
   
   disp_all ();
   
-  ts[0].debind (it);
+  ts[0].erase (it);
   
   disp_all ();
   
@@ -1598,7 +1634,7 @@ void test_debinding (void)
   
   disp_all ();
   
-  ts[1].debind (first, last);
+  ts[1].erase (first, last);
   
   disp_all ();
   
@@ -1609,6 +1645,82 @@ void test_debinding (void)
   ts[1].clear ();
   
   disp_all ();
+}
+
+// constexpr auto test_debinding_f = make_test_functor ("test debinding\n", &test_debinding);
+
+void test_splicing (void)
+{
+
+}
+
+void test_range (void)
+{
+  std::cout << "test range construction" << std::endl;
+  
+  std::vector<int> data { 3, 5, 7, 5, 5, 8, 2, 7 };
+  std::vector<tracker<int, remote::standalone_tracker>> r;
+  std::transform (data.begin (), data.end (), std::back_inserter (r),
+                  [](int& x) { return tracker<int, remote::standalone_tracker> { x }; });
+  
+  std::vector<std::reference_wrapper<tracker<int, remote::standalone_tracker>>> filtered;
+  std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
+                [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 5; });
+  
+  standalone_tracker<remote::tracker<int>> tkr { tag::bind, filtered.begin (), filtered.end () };
+  auto print_tkr = [&tkr](void)
+  {
+    std::cout << "{" << std::endl;
+    std::for_each (tkr.begin (), tkr.end (), [](int& i) { std::cout << "  " << i << std::endl; });
+    std::cout << "}" << std::endl;
+  };
+  
+  print_tkr ();
+  // std::vector<tracker<int, remote::standalone_tracker> *> filtered1;
+  // std::for_each (r.begin (), r.end (), [&filtered1](tracker<int, remote::standalone_tracker>& t)
+  //                                      {
+  //                                        if (t.get_parent () == 3)
+  //                                          filtered1.emplace_back (&t);
+  //                                      });
+  // standalone_tracker<remote::tracker<int>> tkr1 { tag::bind, filtered1.begin (), filtered1.end () };
+  filtered.clear ();
+  std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
+                [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 3; });
+  
+  tkr.bind (filtered.begin (), filtered.end ());
+  
+  print_tkr ();
+  
+  filtered.clear ();
+  std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
+                [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 7; });
+  
+  tkr.insert (std::next (tkr.begin ()), filtered.begin (), filtered.end ());
+  
+  print_tkr ();
+  std::cout << "end" << std::endl;
+}
+
+void test_iterators (void)
+{
+  std::cout << "test iterators" << std::endl;
+  
+  std::vector<int> data { 3, 5, 7, 5, 5, 8, 2, 7 };
+  std::vector<tracker<int, remote::standalone_tracker>> r;
+  std::transform (data.begin (), data.end (), std::back_inserter (r),
+                  [](int& x) { return tracker<int, remote::standalone_tracker> { x }; });
+  
+  std::vector<std::reference_wrapper<tracker<int, remote::standalone_tracker>>> filtered;
+  std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
+                [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 5; });
+  
+  standalone_tracker<remote::tracker<int>> tkr { tag::bind, filtered.begin (), filtered.end () };
+  
+  standalone_tracker<remote::tracker<int>>::iter it = tkr.begin ();
+  standalone_tracker<remote::tracker<int>>::citer cit = it;
+  
+  
+  std::cout << "end" << std::endl;
 }
 
 int main()
@@ -1674,6 +1786,7 @@ int main()
 
     tracker<parent, remote::reporter<int>, tag::intrusive> xp;
 
+    test_range ();
   }
   catch (std::exception &e)
   {
@@ -1681,24 +1794,24 @@ int main()
     return 1;
   }
 
-  std::cout << "itracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  std::cout << "itracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
-  std::cout << "itracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  std::cout << "itracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
-  std::cout << "ntracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  std::cout << "ntracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
-  std::cout << "ntracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  std::cout << "ntracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::nonintrusive>) << std::endl;
-  std::cout << "ireporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  std::cout << "ireporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
-  std::cout << "ireporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
-  std::cout << "ireporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
-  std::cout << "nreporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  std::cout << "nreporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
-  std::cout << "nreporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
-  std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::nonintrusive>) << std::endl << std::endl;
+  // std::cout << "itracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
+  // std::cout << "itracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
+  // std::cout << "itracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
+  // std::cout << "itracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
+  // std::cout << "ntracker : ireporter  :" << sizeof (tracker<child,  remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
+  // std::cout << "ntracker : nreporter  :" << sizeof (tracker<child,  remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
+  // std::cout << "ntracker : itracker   :" << sizeof (tracker<child,  remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
+  // std::cout << "ntracker : ntracker   :" << sizeof (tracker<child,  remote::tracker <parent>,                  tag::nonintrusive>) << std::endl;
+  // std::cout << "ireporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
+  // std::cout << "ireporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::intrusive>)    << std::endl;
+  // std::cout << "ireporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::intrusive>)    << std::endl;
+  // std::cout << "ireporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::intrusive>)    << std::endl;
+  // std::cout << "nreporter : ireporter :" << sizeof (reporter<child, remote::reporter<parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
+  // std::cout << "nreporter : nreporter :" << sizeof (reporter<child, remote::reporter<parent>,                  tag::nonintrusive>) << std::endl;
+  // std::cout << "nreporter : itracker  :" << sizeof (reporter<child, remote::tracker <parent, tag::intrusive>,  tag::nonintrusive>) << std::endl;
+  // std::cout << "nreporter : ntracker  :" << sizeof (reporter<child, remote::tracker <parent>,                  tag::nonintrusive>) << std::endl << std::endl;
 
-  std::cout << "iter  :" << sizeof (tracker<child, tag::intrusive::reporter<parent>, tag::nonintrusive>::iter) << std::endl;
+  // std::cout << "iter  :" << sizeof (tracker<child, tag::intrusive::reporter<parent>, tag::nonintrusive>::iter) << std::endl;
 
   return 0;
 }
