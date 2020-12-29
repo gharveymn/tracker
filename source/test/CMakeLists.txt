@@ -1,25 +1,43 @@
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-ADD_EXECUTABLE(test_tracker main.cpp)
-TARGET_LINK_LIBRARIES(test_tracker tracker)
 
-IF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC -stdlib=libc++ -ftime-trace --coverage -fno-rtti -Wall -Wextra)
-  TARGET_LINK_OPTIONS(test_tracker PUBLIC -Wl,--allow-multiple-definition --coverage)
-  TARGET_LINK_LIBRARIES(test_tracker c++ c++abi)
-ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC -fno-rtti -Wall -Wextra)
-ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC /W4 /GR-)
-ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+SET(TEST_NAME tracker)
+SET(SOURCE_FILES main.cpp)
 
-ENDIF()
+SET(TARGET_VERSIONS 11 14 17 20)
 
-if (UNIX)
-  TARGET_COMPILE_OPTIONS(test_tracker PUBLIC -fsanitize=address)
-  TARGET_LINK_OPTIONS(test_tracker PUBLIC -fsanitize=address)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  SET(COMPILE_OPTS -stdlib=libc++ -ftime-trace --coverage -fno-rtti  -Wall -Wextra)
+  SET(LINK_OPTS -Wl,--allow-multiple-definition --coverage)
+  SET(LINK_LIBS c++ c++abi)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  SET(COMPILE_OPTS -fno-rtti  -Wall -Wextra)
+  SET(LINK_OPTS )
+  SET(LINK_LIBS )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  SET(COMPILE_OPTS /W4 /GR-)
+  SET(LINK_OPTS )
+  SET(LINK_LIBS )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+  SET(COMPILE_OPTS )
+  SET(LINK_OPTS )
+  SET(LINK_LIBS )
 endif()
 
-SET_TARGET_PROPERTIES(test_tracker PROPERTIES
-                      CXX_STANDARD          20
-                      CXX_STANDARD_REQUIRED NO
-                      CXX_EXTENSIONS        NO)
+IF (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  LIST(APPEND COMPILE_OPTS -fsanitize=address)
+  LIST(APPEND LINK_OPTS -fsanitize=address)
+ENDIF()
+
+FOREACH(version ${TARGET_VERSIONS})
+  SET(target_name test.${TEST_NAME}.c++${version})
+  ADD_EXECUTABLE(${target_name} ${SOURCE_FILES})
+
+  TARGET_COMPILE_OPTIONS(${target_name} PUBLIC ${COMPILE_OPTS})
+  TARGET_LINK_OPTIONS   (${target_name} PUBLIC ${LINK_OPTS})
+  TARGET_LINK_LIBRARIES (${target_name} ${PACKAGE_NAME} ${LINK_LIBS})
+
+  SET_TARGET_PROPERTIES(${target_name} PROPERTIES
+                        CXX_STANDARD          ${version}
+                        CXX_STANDARD_REQUIRED NO
+                        CXX_EXTENSIONS        NO)
+ENDFOREACH()
