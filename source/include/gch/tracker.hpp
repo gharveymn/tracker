@@ -614,8 +614,10 @@ namespace gch
 
       tracker_base& operator= (tracker_base&& other) noexcept
       {
-        rptr_iter pivot = base_splice_bindings (rptrs_cend (), other);
-        base_debind (rptrs_begin (), pivot);
+        // clear is noexcept, so it's be safe to do that first
+        clear ();
+        m_rptrs = std::move (other.m_rptrs);
+        repoint_reporters (rptrs_begin (), rptrs_end ());
         return *this;
       }
 
@@ -653,11 +655,13 @@ namespace gch
         other.repoint_reporters (other.rptrs_begin (), other.rptrs_end ());
       }
 
-      rptr_iter base_splice_bindings (const rptr_citer pos, tracker_base& src) noexcept
+      rptr_iter base_splice_bindings (const rptr_citer pos, tracker_base& src)
       {
         rptr_iter pivot = src.rptrs_begin ();
-        repoint_reporters (src.rptrs_begin (), src.rptrs_end ());
+        // splice is unsafe
         m_rptrs.splice (pos, src.m_rptrs);
+        // repoint_reporters is safe
+        repoint_reporters (rptrs_begin (), rptrs_end ());
         return pivot;
       }
 
@@ -735,14 +739,14 @@ namespace gch
       }
 
       //! safe, symmetric
-      rptr_iter base_debind (rptr_citer pos)
+      rptr_iter base_debind (rptr_citer pos) noexcept
       {
         pos->reset_remote_tracking ();
         return rptrs_erase (pos);
       }
 
       //! safe
-      rptr_iter base_debind (rptr_citer first, const rptr_citer last)
+      rptr_iter base_debind (rptr_citer first, const rptr_citer last) noexcept
       {
         while (first != last)
           first = base_debind (first);
@@ -1392,32 +1396,32 @@ namespace gch
       }
 
       //! transfers all bindings from `other`; no overwriting
-      GCH_CPP14_CONSTEXPR iter splice (citer pos, local_interface_type& other) noexcept
+      GCH_CPP14_CONSTEXPR iter splice (citer pos, local_interface_type& other)
       {
         return base::base_splice_bindings (pos, other);
       }
 
-      GCH_CPP14_CONSTEXPR iter splice (citer pos, local_interface_type&& other) noexcept
+      GCH_CPP14_CONSTEXPR iter splice (citer pos, local_interface_type&& other)
       {
         return splice (pos, other);
       }
 
-      GCH_CPP14_CONSTEXPR iter splice_front (local_interface_type& other) noexcept
+      GCH_CPP14_CONSTEXPR iter splice_front (local_interface_type& other)
       {
         return splice (cbegin (), other);
       }
 
-      GCH_CPP14_CONSTEXPR iter splice_front (local_interface_type&& other) noexcept
+      GCH_CPP14_CONSTEXPR iter splice_front (local_interface_type&& other)
       {
         return splice (cbegin (), other);
       }
 
-      GCH_CPP14_CONSTEXPR iter splice_back (local_interface_type& other) noexcept
+      GCH_CPP14_CONSTEXPR iter splice_back (local_interface_type& other)
       {
         return splice (cend (), other);
       }
 
-      GCH_CPP14_CONSTEXPR iter splice_back (local_interface_type&& other) noexcept
+      GCH_CPP14_CONSTEXPR iter splice_back (local_interface_type&& other)
       {
         return splice (cend (), other);
       }
