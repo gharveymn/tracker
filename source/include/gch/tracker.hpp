@@ -837,10 +837,12 @@ namespace gch
     };
 
     template <>
-    tracker_base<tag::reporter_base>::rptr_iter
-    tracker_base<tag::reporter_base>::base_rebind_before (const rptr_citer pos,
-                                                          reporter_base<tag::reporter_base,
-                                                                        tag::tracker_base>& remote)
+    inline
+    auto
+    tracker_base<tag::reporter_base>::
+    base_rebind_before (const rptr_citer pos,
+                        reporter_base<tag::reporter_base, tag::tracker_base>& remote)
+      -> rptr_iter
     {
       const rptr_iter local_it = rptrs_emplace (pos, tag::track, remote);
       remote.reset (*this, local_it);
@@ -848,9 +850,11 @@ namespace gch
     }
 
     template <>
-    tracker_base<tag::tracker_base>::rptr_iter
-    tracker_base<tag::tracker_base>::base_rebind_before (const rptr_citer pos,
-      tracker_base<tag::tracker_base>& remote)
+    inline
+    auto
+    tracker_base<tag::tracker_base>::
+    base_rebind_before (const rptr_citer pos, tracker_base<tag::tracker_base>& remote)
+      -> rptr_iter
     {
       const rptr_iter local_it = rptrs_emplace (pos);
       try
@@ -868,19 +872,21 @@ namespace gch
     }
 
     template <>
+    inline
     void
-    tracker_base<tag::reporter_base>::base_replace (const rptr_iter pos,
-                                                    reporter_base<tag::reporter_base,
-                                                                  tag::tracker_base>& remote)
+    tracker_base<tag::reporter_base>::
+    base_replace (const rptr_iter pos,
+                  reporter_base<tag::reporter_base, tag::tracker_base>& remote)
     {
       remote.reset (*this, pos);
       pos->reset (remote);
     }
 
     template <>
+    inline
     void
-    tracker_base<tag::tracker_base>::base_replace (const rptr_iter pos,
-                                                   tracker_base<tag::tracker_base>& remote)
+    tracker_base<tag::tracker_base>::
+    base_replace (const rptr_iter pos, tracker_base<tag::tracker_base>& remote)
     {
       const rptr_iter remote_it = remote.rptrs_emplace (remote.rptrs_end ());
       pos->reset (remote, remote_it);
@@ -946,7 +952,7 @@ namespace gch
 //      static_assert (std::is_trivially_copy_assignable<base>::value, "");
 //      static_assert (std::is_trivially_move_assignable<base>::value, "");
 
-     static_assert (std::is_trivially_copyable<base>::value, "base was not trivially copyable");
+      static_assert (std::is_trivially_copyable<base>::value, "base was not trivially copyable");
 
       reporter_common (reporter_common&& other) noexcept
         : base (other) // the base is trivially copyable
