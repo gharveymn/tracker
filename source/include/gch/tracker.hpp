@@ -1599,41 +1599,17 @@ namespace gch
 
       template <typename Iterator>
       auto insert (citer pos, Iterator first, const Iterator last)
-        -> typename std::enable_if<std::is_constructible<remote_interface_type&,
-                                                         decltype (*first)>::value &&
-                                   std::is_lvalue_reference<decltype (*first)>::value, iter>::type
+        -> typename std::enable_if<
+             std::is_constructible<remote_interface_type *, decltype (*first)>::valueiter>::type
       {
         if (first == last)
           return erase (pos, pos);
 
-        const iter pivot = insert (pos, static_cast<remote_interface_type&> (*first));
+        const iter pivot = insert (pos, *static_cast<remote_interface_type *> (*first));
         try
         {
           while (++first != last)
-            insert (pos, static_cast<remote_interface_type&> (*first));
-        }
-        catch (...)
-        {
-          erase (pivot, pos);
-          throw;
-        }
-        return pivot;
-      }
-
-      template <typename Iterator>
-      auto insert (citer pos, Iterator first, const Iterator last)
-        -> typename std::enable_if<std::is_constructible<remote_interface_type&,
-                                                         decltype (*first)>::value &&
-                                   std::is_rvalue_reference<decltype (*first)>::value, iter>::type
-      {
-        if (first == last)
-          return erase (pos, pos);
-
-        const iter pivot = insert (pos, std::move (static_cast<remote_interface_type&> (*first)));
-        try
-        {
-          while (++first != last)
-            insert (pos, std::move (static_cast<remote_interface_type&> (*first)));
+            insert (pos, *static_cast<remote_interface_type *> (*first));
         }
         catch (...)
         {
@@ -1698,8 +1674,7 @@ namespace gch
 
       // only available for trackers since it modifies r
       template <typename ...Args,
-                typename Tag = remote_tag,
-        tag::enable_if_tracker_t<Tag> * = nullptr>
+                typename Tag = remote_tag, tag::enable_if_tracker_t<Tag> * = nullptr>
       iter bind (remote_interface_type& r, Args&&... args)
       {
         iter ret = bind (r);
@@ -1720,8 +1695,8 @@ namespace gch
 
       template <typename Iterator>
       auto bind (const Iterator first, const Iterator last)
-        -> typename std::enable_if<std::is_constructible<remote_interface_type&,
-                                                         decltype (*first)>::value, iter>::type
+        -> typename std::enable_if<
+             std::is_constructible<remote_interface_type *, decltype (*first)>::value, iter>::type
       {
         return insert (end (), first, last);
       }
