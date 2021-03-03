@@ -1,4 +1,5 @@
-#include "gch/tracker.hpp"
+#include "gch/tracker/reporter.hpp"
+#include "gch/tracker/tracker.hpp"
 
 #include <plf_list.h>
 
@@ -879,7 +880,8 @@ private:
 
 };
 
-void anon1::bind (anon2& r)
+void
+anon1::bind (anon2& r)
 {
   m_tracker.bind (r.m_tracker);
 }
@@ -1054,22 +1056,28 @@ private:
 
 };
 
-void named1::bind (named2& n2)
+void
+named1::bind (named2& n2)
 {
   m_tracker.bind (n2.get_tracker ());
 }
 
-void bind (named2& n2, named1& n1)
+static
+void
+bind (named2& n2, named1& n1)
 {
   n2.bind (n1);
 }
 
-void bind (named1& n1, named2& n2)
+static
+void
+bind (named1& n1, named2& n2)
 {
   n1.bind (n2);
 }
 
-inline void
+inline
+void
 bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
 {
   for (named1 *n1 : n1s)
@@ -1077,7 +1085,8 @@ bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
       bind (n1->m_tracker, n2->m_tracker);
 }
 
-inline void
+inline
+void
 bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
       std::initializer_list<std::reference_wrapper<named2>> n2s)
 {
@@ -1086,7 +1095,8 @@ bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
       bind (n1.m_tracker, n2.m_tracker);
 }
 
-std::ostream& operator<< (std::ostream& o, const named1& p)
+std::ostream&
+operator<< (std::ostream& o, const named1& p)
 {
   o.width (4);
   o << p.m_name << ": { ";
@@ -1095,7 +1105,8 @@ std::ostream& operator<< (std::ostream& o, const named1& p)
   return o << "}";
 }
 
-std::ostream& operator<< (std::ostream& o, const named2& p)
+std::ostream&
+operator<< (std::ostream& o, const named2& p)
 {
   o.width (4);
   o << p.m_name << ": { ";
@@ -1105,7 +1116,9 @@ std::ostream& operator<< (std::ostream& o, const named2& p)
 }
 
 template <typename Child, typename Parent>
-std::chrono::duration<double> perf_create (void)
+static
+std::chrono::duration<double>
+perf_create (void)
 {
 
   std::cout << "\nperf_create" << std::endl;
@@ -1173,7 +1186,9 @@ std::chrono::duration<double> perf_create (void)
 }
 
 template <typename Child, typename Parent>
-std::chrono::duration<double> perf_access (void)
+static
+std::chrono::duration<double>
+perf_access (void)
 {
 
   std::cout << "\nperf_access" << std::endl;
@@ -1209,7 +1224,9 @@ std::chrono::duration<double> perf_access (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> test_multireporter (void)
+static
+std::chrono::duration<double>
+test_multireporter (void)
 {
 
   std::cout << "\ntest_multireporter" << std::endl;
@@ -1242,7 +1259,9 @@ std::chrono::duration<double> test_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> perf_multireporter (void)
+static
+std::chrono::duration<double>
+perf_multireporter (void)
 {
 
   std::cout << "\nperf_multireporter" << std::endl;
@@ -1285,7 +1304,9 @@ std::chrono::duration<double> perf_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> perf_disparate_multireporter (void)
+static
+std::chrono::duration<double>
+perf_disparate_multireporter (void)
 {
 
   std::cout << "\nperf_disparate_multireporter" << std::endl;
@@ -1308,15 +1329,15 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
       auto& a1 = a1s.back ();
       auto& a2 = a2s.back ();
       std::for_each (a2s.begin (), --a2s.end (),
-                     [&a1] (anon2& a2)
+                     [&a1] (anon2& x2)
                      {
-                       a1.bind (a2);
+                       a1.bind (x2);
                      });
 
       std::for_each (a1s.begin (), --a1s.end (),
-                     [&a2] (anon1& a1)
+                     [&a2] (anon1& x1)
                      {
-                       a2.bind (a1);
+                       a2.bind (x1);
                      });
       a1s.back ().bind (a2s.back ());
     }
@@ -1339,7 +1360,9 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> test_disparate_multireporter (void)
+static
+std::chrono::duration<double>
+test_disparate_multireporter (void)
 {
 
   std::cout << "\ntest_disparate_multireporter" << std::endl;
@@ -1420,7 +1443,9 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> test_binding (void)
+static
+std::chrono::duration<double>
+test_binding (void)
 {
 
   std::cout << "\ntest_binding" << std::endl;
@@ -1478,8 +1503,11 @@ std::chrono::duration<double> test_binding (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
+
 template <typename Child, typename Parent>
-std::chrono::duration<double> test_reporter (void)
+static
+std::chrono::duration<double>
+test_reporter (void)
 {
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
@@ -1575,7 +1603,9 @@ struct mix
   { }
 };
 
-void test_debinding (void)
+static
+void
+test_debinding (void)
 {
   constexpr auto num_trs = 6;
   std::array<standalone_tracker<remote::standalone_tracker>, num_trs> ts;
@@ -1671,12 +1701,16 @@ void test_debinding (void)
 
 // constexpr auto test_debinding_f = make_test_functor ("test debinding\n", &test_debinding);
 
-void test_splicing (void)
+static
+void
+test_splicing (void)
 {
 
 }
 
-void test_range (void)
+static
+void
+test_range (void)
 {
   std::cout << "test range construction" << std::endl;
 
@@ -1723,7 +1757,9 @@ void test_range (void)
   std::cout << "end" << std::endl;
 }
 
-void test_iterators (void)
+static
+void
+test_iterators (void)
 {
   std::cout << "test iterators" << std::endl;
 
@@ -1745,7 +1781,25 @@ void test_iterators (void)
   std::cout << "end" << std::endl;
 }
 
-int main()
+class B;
+
+class A
+  : public intrusive_reporter<A, remote::intrusive_tracker<B>>
+{
+  using base = intrusive_reporter<A, remote::intrusive_tracker<B>>;
+
+  public:
+    using reporter_type       = base;
+    using remote_tracker_type = typename tracker_traits<reporter_type>::remote_interface_type;
+    using remote_iterator     = remote_tracker_type::citer;
+};
+
+class B
+  : public intrusive_tracker<B, remote::intrusive_reporter<A>>
+{ };
+
+int
+main()
 {
   try
   {

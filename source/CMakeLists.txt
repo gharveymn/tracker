@@ -9,12 +9,15 @@ ENDIF()
 
 CREATE_PACKAGE(AUTHOR       gharveymn
                NAMESPACE    gch
+               NAME         tracker
                DEPENDENCIES plf_list
-               HEADERS      tracker.hpp)
+               HEADERS      detail/common.hpp
+                            reporter.hpp
+                            tracker.hpp)
 
 IF(TRACKER_BUILD_TESTS)
-  MESSAGE(STATUS "Testing is enabled.")
+  MESSAGE(STATUS "Testing for gch::tracker is enabled.")
   ADD_SUBDIRECTORY(test)
 ELSE()
-  MESSAGE(STATUS "Testing is disabled.")
+  MESSAGE(STATUS "Testing for gch::tracker is disabled.")
 ENDIF()
