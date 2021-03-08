@@ -13,10 +13,35 @@
 namespace gch
 {
 
+  template <typename LocalBaseTag, typename RemoteBaseTag>
+  struct tracker_traits<detail::reporter_base<LocalBaseTag, RemoteBaseTag>>
+  {
+    using local_base_tag  = LocalBaseTag;
+    using remote_base_tag = RemoteBaseTag;
+
+    using local_reporter_type  = typename local_base_tag::template reporter_type<local_base_tag,
+                                                                                 remote_base_tag>;
+    using remote_reporter_type = typename remote_base_tag::template reporter_type<remote_base_tag,
+                                                                                  local_base_tag>;
+
+    using local_access_type  = typename local_base_tag::template access_type<remote_base_tag>;
+    using remote_access_type = typename remote_base_tag::template access_type<local_base_tag>;
+
+    using local_const_access_type  = typename local_base_tag::template
+                                     const_access_type<remote_base_tag>;
+    using remote_const_access_type = typename remote_base_tag::template
+                                       const_access_type<local_base_tag>;
+
+    using local_base_type  = typename local_base_tag::template base_type<local_base_tag,
+                                                                         remote_base_tag>;
+    using remote_base_type = typename remote_base_tag::template base_type<remote_base_tag,
+                                                                          local_base_tag>;
+  };
+
   template <typename Parent, typename RemoteTag, typename ...Ts>
   struct tracker_traits<reporter<Parent, RemoteTag, Ts...>>
   {
-    using local_tag = typename detail::tag::reporter<Parent, Ts...>::reduced_tag;
+    using local_tag  = typename detail::tag::reporter<Parent, Ts...>::reduced_tag;
     using remote_tag = RemoteTag;
 
     using local_base_tag  = typename local_tag::base_tag;
@@ -320,18 +345,25 @@ namespace gch
       : public reporter_base_common<reporter_base<LocalBaseTag, tag::reporter_base>,
                                     reporter_base<tag::reporter_base, LocalBaseTag>>
     {
+      using traits = tracker_traits<reporter_base<LocalBaseTag, tag::reporter_base>>;
     public:
-      using local_base_tag       = LocalBaseTag;
-      using remote_base_tag      = tag::reporter_base;
 
-      using local_base_type      = reporter_base;
-      using remote_base_type     = reporter_base<remote_base_tag, local_base_tag>;
+      using local_base_tag  = typename traits::local_base_tag;
+      using remote_base_tag = typename traits::remote_base_tag;
 
-      using local_reporter_type  = reporter_base;
-      using remote_reporter_type = remote_base_type;
+      using local_reporter_type  = typename traits::local_reporter_type;
+      using remote_reporter_type = typename traits::remote_reporter_type;
 
+      using local_access_type  = typename traits::local_access_type;
+      using remote_access_type = typename traits::remote_access_type;
+
+      using local_base_type  = typename traits::local_base_type;
+      using remote_base_type = typename traits::remote_base_type;
+
+    private:
       using base = reporter_base_common<reporter_base, remote_base_type>;
 
+    public:
       using base::base;
       reporter_base            (void)                           = default;
       reporter_base            (const reporter_base&)           = default;
@@ -409,20 +441,26 @@ namespace gch
       : public reporter_base_common<reporter_base<LocalBaseTag, tag::tracker_base>,
                                     tracker_base<LocalBaseTag>>
     {
+      using traits = tracker_traits<reporter_base<LocalBaseTag, tag::tracker_base>>;
     public:
-      using local_base_tag       = LocalBaseTag;
-      using remote_base_tag      = tag::tracker_base;
 
-      using local_base_type      = reporter_base;
-      using remote_base_type     = tracker_base<local_base_tag>;
+      using local_base_tag  = typename traits::local_base_tag;
+      using remote_base_tag = typename traits::remote_base_tag;
 
-      using local_reporter_type  = reporter_base;
-      using remote_reporter_type = reporter_base<remote_base_tag, local_base_tag>;
+      using local_reporter_type  = typename traits::local_reporter_type;
+      using remote_reporter_type = typename traits::remote_reporter_type;
 
-      using base = reporter_base_common<reporter_base, remote_base_type>;
+      using local_access_type  = typename traits::local_access_type;
+      using remote_access_type = typename traits::remote_access_type;
+
+      using local_const_access_type  = typename traits::local_const_access_type;
+      using remote_const_access_type = typename traits::remote_const_access_type;
+
+      using local_base_type  = typename traits::local_base_type;
+      using remote_base_type = typename traits::remote_base_type;
 
     private:
-      using remote_access_type  = typename remote_base_type::access_type;
+      using base = reporter_base_common<reporter_base, remote_base_type>;
 
     public:
       using base::base;
@@ -441,8 +479,7 @@ namespace gch
           m_self (remote.track (remote.rptrs_cend (), *this))
       { }
 
-      reporter_base (gch::tag::bind_t, remote_base_type& remote,
-                     typename remote_base_type::caccess_type pos)
+      reporter_base (gch::tag::bind_t, remote_base_type& remote, remote_const_access_type pos)
         : base   (tag::track, remote),
           m_self (remote.track (pos, *this))
       { }

@@ -16,10 +16,35 @@
 namespace gch
 {
 
+  template <typename RemoteBaseTag>
+  struct tracker_traits<detail::tracker_base<RemoteBaseTag>>
+  {
+    using local_base_tag  = detail::tag::tracker_base;
+    using remote_base_tag = RemoteBaseTag;
+
+    using local_reporter_type  = typename local_base_tag::template reporter_type<local_base_tag,
+                                                                                 remote_base_tag>;
+    using remote_reporter_type = typename remote_base_tag::template reporter_type<remote_base_tag,
+                                                                                  local_base_tag>;
+
+    using local_access_type  = typename local_base_tag::template access_type<remote_base_tag>;
+    using remote_access_type = typename remote_base_tag::template access_type<local_base_tag>;
+
+  using local_const_access_type  = typename local_base_tag::template
+                                     const_access_type<remote_base_tag>;
+  using remote_const_access_type = typename remote_base_tag::template
+                                     const_access_type<local_base_tag>;
+
+    using local_base_type  = typename local_base_tag::template base_type<local_base_tag,
+                                                                         remote_base_tag>;
+    using remote_base_type = typename remote_base_tag::template base_type<remote_base_tag,
+                                                                          local_base_tag>;
+  };
+
   template <typename Parent, typename RemoteTag, typename ...Ts>
   struct tracker_traits<tracker<Parent, RemoteTag, Ts...>>
   {
-    using local_tag = typename detail::tag::tracker<Parent, Ts...>::reduced_tag;
+    using local_tag  = typename detail::tag::tracker<Parent, Ts...>::reduced_tag;
     using remote_tag = RemoteTag;
 
     using local_base_tag  = typename local_tag::base_tag;
@@ -43,22 +68,30 @@ namespace gch
   namespace detail
   {
 
-    template <typename ...Ts>
-    using tracker_container = plf::list<Ts...>;
-
     template <typename RemoteBaseTag>
     class tracker_base
     {
-      using derived_type = tracker_base<RemoteBaseTag>;
+      using traits = tracker_traits<tracker_base<RemoteBaseTag>>;
     public:
 
-      using local_base_tag  = tag::tracker_base;
-      using remote_base_tag = RemoteBaseTag;
+      using local_base_tag  = typename traits::local_base_tag;
+      using remote_base_tag = typename traits::remote_base_tag;
+
+      using local_reporter_type  = typename traits::local_reporter_type;
+      using remote_reporter_type = typename traits::remote_reporter_type;
+
+      using local_access_type  = typename traits::local_access_type;
+      using remote_access_type = typename traits::remote_access_type;
+
+      using local_const_access_type  = typename traits::local_const_access_type;
+      using remote_const_access_type = typename traits::remote_const_access_type;
+
+      using local_base_type  = typename traits::local_base_type;
+      using remote_base_type = typename traits::remote_base_type;
 
     protected:
       // Store pointers to the base types. Downcast when needed.
-      using reporter_type  = reporter_base<tag::tracker_base, remote_base_tag>;
-      using reporter_list  = tracker_container<reporter_type>;
+      using reporter_list  = tracker_container<local_reporter_type>;
       using rptrs_iter     = typename reporter_list::iterator;
       using rptrs_citer    = typename reporter_list::const_iterator;
       using rptrs_riter    = typename reporter_list::reverse_iterator;
@@ -70,22 +103,12 @@ namespace gch
       using rptrs_alloc_t  = typename reporter_list::allocator_type;
 
     public:
-      using access_type  = rptrs_iter;
-      using caccess_type = rptrs_citer;
-
-      using local_reporter_type = reporter_type;
-
-      using remote_base_type = typename remote_base_tag::template type<remote_base_tag,
-                                                                       tag::tracker_base>;
-
-      using remote_reporter_type = typename remote_base_type::local_reporter_type;
-
-      tracker_base            (void)                           = default;
+      tracker_base            (void)                    = default;
       tracker_base            (const tracker_base&)     = delete;
 //    tracker_base            (tracker_base&&) noexcept = impl;
       tracker_base& operator= (const tracker_base&)     = delete;
 //    tracker_base& operator= (tracker_base&&) noexcept = impl;
-      ~tracker_base           (void)                           = default;
+      ~tracker_base           (void)                    = default;
 
       tracker_base (tracker_base&& other) noexcept
       {
@@ -119,7 +142,7 @@ namespace gch
       {
         if (! m_rptrs.empty ())
         {
-          for (reporter_type& p : m_rptrs)
+          for (local_reporter_type& p : m_rptrs)
             p.reset_remote_tracking ();
           m_rptrs.clear ();
         }
@@ -151,9 +174,9 @@ namespace gch
       {
         rptrs_iter ret = m_rptrs.insert (pos, first, last);
         std::for_each (rptrs_citer { ret }, pos,
-                       [this, ret](const reporter_type& r)
+                       [this, ret](const local_reporter_type& r)
                        {
-                         r.get_remote_reporter ().set (static_cast<derived_type&> (*this), ret);
+                         r.get_remote_reporter ().set (*this, ret);
                        });
         src.m_rptrs.erase (first, last);
         return ret;
@@ -233,9 +256,9 @@ namespace gch
       repoint_reporters (rptrs_iter first, rptrs_iter last) noexcept
       {
         std::for_each (first, last,
-                       [this](reporter_type& rptr)
+                       [this](local_reporter_type& rptr)
                        {
-                         rptr.get_remote_reporter ().track (static_cast<derived_type&> (*this));
+                         rptr.get_remote_reporter ().track (*this);
                        });
       }
 
@@ -261,7 +284,7 @@ namespace gch
       void
       base_remove_if (Pred pred)
       {
-        m_rptrs.remove_if ([&](const reporter_type& e)
+        m_rptrs.remove_if ([&](const local_reporter_type& e)
                            {
                              if (pred (e))
                              {

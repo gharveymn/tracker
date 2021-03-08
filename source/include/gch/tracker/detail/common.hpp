@@ -153,6 +153,9 @@ namespace gch
   namespace detail
   {
 
+    template <typename ...Ts>
+    using tracker_container = plf::list<Ts...>;
+
     template <typename LocalBaseTag, typename RemoteBaseTag>
     class reporter_base;
 
@@ -173,7 +176,16 @@ namespace gch
         using base_tag = reporter_base;
 
         template <typename LocalBaseTag, typename RemoteBaseTag>
-        using type = detail::reporter_base<LocalBaseTag, RemoteBaseTag>;
+        using reporter_type = detail::reporter_base<LocalBaseTag, RemoteBaseTag>;
+
+        template <typename>
+        using access_type = void;
+
+        template <typename>
+        using const_access_type = void;
+
+        template <typename LocalBaseTag, typename RemoteBaseTag>
+        using base_type = detail::reporter_base<LocalBaseTag, RemoteBaseTag>;
       };
 
       struct tracker_base
@@ -181,7 +193,18 @@ namespace gch
         using base_tag = tracker_base;
 
         template <typename, typename RemoteBaseTag>
-        using type = detail::tracker_base<RemoteBaseTag>;
+        using reporter_type = detail::reporter_base<detail::tag::tracker_base, RemoteBaseTag>;
+
+        template <typename RemoteBaseTag>
+        using access_type = typename tracker_container<
+          reporter_type<detail::tag::tracker_base, RemoteBaseTag>>::iterator;
+
+        template <typename RemoteBaseTag>
+        using const_access_type = typename tracker_container<
+          reporter_type<detail::tag::tracker_base, RemoteBaseTag>>::const_iterator;
+
+        template <typename, typename RemoteBaseTag>
+        using base_type = detail::tracker_base<RemoteBaseTag>;
       };
 
       template <typename Parent, typename IntrusiveTag>
@@ -198,9 +221,6 @@ namespace gch
 
         template <typename RemoteTag>
         using common_type = detail::reporter_common<interface_type<RemoteTag>>;
-
-        template <typename LocalBaseTag, typename RemoteBaseTag>
-        using base_type = detail::reporter_base<LocalBaseTag, RemoteBaseTag>;
       };
 
       template <typename Parent, typename IntrusiveTag>
@@ -217,9 +237,6 @@ namespace gch
 
         template <typename RemoteTag>
         using common_type = detail::tracker_common<interface_type<RemoteTag>>;
-
-        template <typename, typename RemoteBaseTag>
-        using base_type = detail::tracker_base<RemoteBaseTag>;
       };
 
       struct standalone_reporter
@@ -236,9 +253,6 @@ namespace gch
 
         template <typename RemoteTag>
         using common_type = detail::reporter_common<interface_type<RemoteTag>>;
-
-        template <typename LocalBaseTag, typename RemoteBaseTag>
-        using base_type = detail::reporter_base<LocalBaseTag, RemoteBaseTag>;
       };
 
       struct standalone_tracker
@@ -255,9 +269,6 @@ namespace gch
 
         template <typename RemoteTag>
         using common_type = detail::tracker_common<interface_type<RemoteTag>>;
-
-        template <typename, typename RemoteBaseTag>
-        using base_type = detail::tracker_base<RemoteBaseTag>;
       };
 
       template <typename RemoteTag>
