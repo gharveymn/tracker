@@ -443,143 +443,6 @@ namespace gch
     template <typename Interface>
     class tracker_common;
 
-    // pretend like reporter_base doesn't exist
-    template <typename ReporterIt, typename RemoteType, typename RemoteInterfaceType>
-    class tracker_iterator
-    {
-      using reporter_iter         = ReporterIt;
-      using reporter_type         = typename ReporterIt::value_type;
-
-      static constexpr
-      bool
-      is_const = std::is_const<
-        typename std::remove_pointer<
-          typename std::iterator_traits<reporter_iter>::pointer>>::value;
-
-      using remote_type = typename std::conditional<is_const,
-                                                      const RemoteType,
-                                                            RemoteType>::type;
-
-      using remote_interface_type = typename std::conditional<is_const,
-                                                              const RemoteInterfaceType,
-                                                              RemoteInterfaceType>::type;
-
-    public:
-      using difference_type   = typename reporter_iter::difference_type;
-      using value_type        = typename std::remove_const<remote_type>::type;
-      using pointer           = remote_type *;
-      using reference         = remote_type&;
-      using iterator_category = typename reporter_iter::iterator_category;
-
-      tracker_iterator            (void)                          = default;
-      tracker_iterator            (const tracker_iterator&)       = default;
-      tracker_iterator            (tracker_iterator&&) noexcept   = default;
-      tracker_iterator& operator= (const tracker_iterator&) &     = default;
-      tracker_iterator& operator= (tracker_iterator&&) & noexcept = default;
-      ~tracker_iterator (void)                                    = default;
-
-      template <typename It, typename T, typename I,
-                typename std::enable_if<! tracker_iterator<It, T, I>::is_const>::type * = nullptr>
-      /* implicit */
-      tracker_iterator (const tracker_iterator<It, T, I>& other) noexcept
-        : m_iter (other.base ())
-      { }
-
-    private:
-      template <typename Interface>
-      friend class tracker_common;
-
-      template <typename It, typename T, typename I>
-      friend class tracker_iterator;
-
-      explicit
-      tracker_iterator (reporter_iter it)
-          : m_iter (it)
-      { }
-
-      reporter_iter
-      base (void) const noexcept
-      {
-        return m_iter;
-      }
-
-    public:
-      tracker_iterator&
-      operator++ (void) noexcept
-      {
-        ++m_iter;
-        return *this;
-      }
-
-      tracker_iterator
-      operator++ (int) noexcept
-      {
-        return iter_common (m_iter++);
-      }
-
-      tracker_iterator&
-      operator-- (void) noexcept
-      {
-        --m_iter;
-        return *this;
-      }
-
-      tracker_iterator
-      operator-- (int) noexcept
-      {
-        return iter_common (m_iter--);
-      }
-
-      friend
-      bool
-      operator== (const tracker_iterator& lhs, const tracker_iterator& rhs) noexcept
-      {
-        return lhs.base () == rhs.base ();
-      }
-
-#ifndef GCH_IMPL_THREE_WAY_COMPARISON
-
-      friend
-      bool
-      operator!= (const tracker_iterator& lhs, const tracker_iterator& rhs) noexcept
-      {
-        return lhs.base () != rhs.base ();
-      }
-
-#endif
-
-      constexpr
-      reference
-      operator* (void) const noexcept
-      {
-        return get_remote ();
-      }
-
-      constexpr
-      pointer
-      operator-> (void) const noexcept
-      {
-        return &get_remote ();
-      }
-
-      constexpr
-      reference
-      get_remote (void) const noexcept
-      {
-        return get_remote_interface ().get_parent ();
-      }
-
-      constexpr
-      remote_interface_type&
-      get_remote_interface (void) const noexcept
-      {
-        return static_cast<remote_interface_type&> (m_iter->get_remote_base ());
-      }
-
-    private:
-      reporter_iter m_iter;
-    };
-
     ////////////////////
     // tracker_common //
     ////////////////////
@@ -617,7 +480,7 @@ namespace gch
       friend remote_base_type;
 
       template <typename It, typename T, typename I>
-      friend class tracker_iterator;
+      friend class gch::tracker_iterator;
 
       // class iterator;
       // class const_iterator;
@@ -1252,7 +1115,7 @@ namespace gch
       iterator
       bind (remote_interface_type&& remote)
       {
-        return bind (remote);
+        return insert (sorted_position (remote), std::move (remote));
       }
 
       template <typename Iterator>

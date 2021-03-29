@@ -476,7 +476,7 @@ namespace gch
 
       reporter_base (gch::tag::bind_t, remote_base_type& remote)
         : base   (tag::track, remote),
-          m_self (remote.track (remote.rptrs_cend (), *this))
+          m_self (remote.track (remote.find_sorted_pos (*this), *this))
       { }
 
       reporter_base (gch::tag::bind_t, remote_base_type& remote, remote_const_access_type pos)
@@ -623,7 +623,7 @@ namespace gch
       friend remote_base_type;
 
       template <typename It, typename T, typename I>
-      friend class tracker_iterator;
+      friend class gch::tracker_iterator;
 
     private:
       using local_reporter_type  = base;
@@ -685,9 +685,11 @@ namespace gch
         : base (gch::tag::bind, remote)
       { }
 
-      template <typename It, typename Tag = remote_tag, tag::enable_if_tracker_t<Tag> * = nullptr>
-      reporter_common (gch::tag::bind_t, remote_interface_type& remote, It pos) noexcept
-        : base (gch::tag::bind, remote, pos)
+      template <typename ReporterIt, typename RemoteType, typename RemoteInterfaceType,
+                typename Tag = remote_tag, tag::enable_if_tracker_t<Tag> * = nullptr>
+      reporter_common (gch::tag::bind_t, remote_interface_type& remote,
+                       tracker_iterator<ReporterIt, RemoteType, RemoteInterfaceType> pos) noexcept
+        : base (gch::tag::bind, remote, pos.base ())
       { }
 
       void
