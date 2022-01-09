@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.15)
 project (
   tracker
   VERSION
-    0.0.2
+    0.0.3
   LANGUAGES
     CXX
 )
@@ -36,6 +36,8 @@ execute_process (
   WORKING_DIRECTORY
     ${PROJECT_SOURCE_DIR}
 )
+
+add_subdirectory (external/plf_list EXCLUDE_FROM_ALL)
 
 add_library (plf::plf_list INTERFACE IMPORTED)
 target_include_directories (plf::plf_list INTERFACE ${PROJECT_SOURCE_DIR}/external/plf_list)

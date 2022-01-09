@@ -1,4 +1,5 @@
-#include "gch/tracker.hpp"
+#include "gch/tracker/reporter.hpp"
+#include "gch/tracker/tracker.hpp"
 
 #include <plf_list.h>
 
@@ -112,8 +113,8 @@ struct nchild_t
   { }
 
   tracker_type m_tracker;
-
 };
+
 
 template <typename LocalTag, template <typename ...> class Child,
           template <typename ...> class TRemoteTag>
@@ -130,6 +131,8 @@ struct iparent_r
   iparent_r (void) = default;
 
 };
+
+static_assert (std::is_trivially_copyable<gch::detail::reporter_base<gch::detail::tag::reporter_base, typename gch::detail::tag::tracker<nchild_t<gch::detail::tag::reporter<iparent_r<nchild_t, gch::remote::tracker>, gch::tag::intrusive> >, gch::tag::nonintrusive>::base_tag>>::value, "base was not trivially copyable");
 
 template <template <typename ...> class Child, template <typename ...> class TRemoteTag>
 struct nparent_r
@@ -156,7 +159,7 @@ struct iparent_t
   {
     return child_type (*this);
   }
-  
+
   // make sure we can put get_parent in derived class
   constexpr int get_parent (void) const noexcept { return 1; }
 
@@ -879,7 +882,8 @@ private:
 
 };
 
-void anon1::bind (anon2& r)
+void
+anon1::bind (anon2& r)
 {
   m_tracker.bind (r.m_tracker);
 }
@@ -1054,22 +1058,28 @@ private:
 
 };
 
-void named1::bind (named2& n2)
+void
+named1::bind (named2& n2)
 {
   m_tracker.bind (n2.get_tracker ());
 }
 
-void bind (named2& n2, named1& n1)
+static
+void
+bind (named2& n2, named1& n1)
 {
   n2.bind (n1);
 }
 
-void bind (named1& n1, named2& n2)
+static
+void
+bind (named1& n1, named2& n2)
 {
   n1.bind (n2);
 }
 
-inline void
+inline
+void
 bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
 {
   for (named1 *n1 : n1s)
@@ -1077,7 +1087,8 @@ bind (std::initializer_list<named1 *> n1s, std::initializer_list<named2 *> n2s)
       bind (n1->m_tracker, n2->m_tracker);
 }
 
-inline void
+inline
+void
 bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
       std::initializer_list<std::reference_wrapper<named2>> n2s)
 {
@@ -1086,7 +1097,8 @@ bind (std::initializer_list<std::reference_wrapper<named1>> n1s,
       bind (n1.m_tracker, n2.m_tracker);
 }
 
-std::ostream& operator<< (std::ostream& o, const named1& p)
+std::ostream&
+operator<< (std::ostream& o, const named1& p)
 {
   o.width (4);
   o << p.m_name << ": { ";
@@ -1095,7 +1107,8 @@ std::ostream& operator<< (std::ostream& o, const named1& p)
   return o << "}";
 }
 
-std::ostream& operator<< (std::ostream& o, const named2& p)
+std::ostream&
+operator<< (std::ostream& o, const named2& p)
 {
   o.width (4);
   o << p.m_name << ": { ";
@@ -1105,7 +1118,9 @@ std::ostream& operator<< (std::ostream& o, const named2& p)
 }
 
 template <typename Child, typename Parent>
-std::chrono::duration<double> perf_create (void)
+static
+std::chrono::duration<double>
+perf_create (void)
 {
 
   std::cout << "\nperf_create" << std::endl;
@@ -1120,9 +1135,9 @@ std::chrono::duration<double> perf_create (void)
   constexpr std::size_t iter_max = 1000 * multiplier;
 
   for (std::size_t i = 0; i < iter_max; ++i)
-    {
-      children.emplace_back (p.create ());
-    }
+  {
+    children.emplace_back (p.create ());
+  }
 
   auto print_num_children = [&p, &q] (void)
     {
@@ -1173,7 +1188,9 @@ std::chrono::duration<double> perf_create (void)
 }
 
 template <typename Child, typename Parent>
-std::chrono::duration<double> perf_access (void)
+static
+std::chrono::duration<double>
+perf_access (void)
 {
 
   std::cout << "\nperf_access" << std::endl;
@@ -1209,7 +1226,9 @@ std::chrono::duration<double> perf_access (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> test_multireporter (void)
+static
+std::chrono::duration<double>
+test_multireporter (void)
 {
 
   std::cout << "\ntest_multireporter" << std::endl;
@@ -1242,7 +1261,9 @@ std::chrono::duration<double> test_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> perf_multireporter (void)
+static
+std::chrono::duration<double>
+perf_multireporter (void)
 {
 
   std::cout << "\nperf_multireporter" << std::endl;
@@ -1285,7 +1306,9 @@ std::chrono::duration<double> perf_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> perf_disparate_multireporter (void)
+static
+std::chrono::duration<double>
+perf_disparate_multireporter (void)
 {
 
   std::cout << "\nperf_disparate_multireporter" << std::endl;
@@ -1308,15 +1331,15 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
       auto& a1 = a1s.back ();
       auto& a2 = a2s.back ();
       std::for_each (a2s.begin (), --a2s.end (),
-                     [&a1] (anon2& a2)
+                     [&a1] (anon2& x2)
                      {
-                       a1.bind (a2);
+                       a1.bind (x2);
                      });
 
       std::for_each (a1s.begin (), --a1s.end (),
-                     [&a2] (anon1& a1)
+                     [&a2] (anon1& x1)
                      {
-                       a2.bind (a1);
+                       a2.bind (x1);
                      });
       a1s.back ().bind (a2s.back ());
     }
@@ -1339,7 +1362,9 @@ std::chrono::duration<double> perf_disparate_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> test_disparate_multireporter (void)
+static
+std::chrono::duration<double>
+test_disparate_multireporter (void)
 {
 
   std::cout << "\ntest_disparate_multireporter" << std::endl;
@@ -1420,7 +1445,9 @@ std::chrono::duration<double> test_disparate_multireporter (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
-std::chrono::duration<double> test_binding (void)
+static
+std::chrono::duration<double>
+test_binding (void)
 {
 
   std::cout << "\ntest_binding" << std::endl;
@@ -1478,8 +1505,11 @@ std::chrono::duration<double> test_binding (void)
   return std::chrono::duration_cast<std::chrono::duration<double>> (t2 - t1);
 }
 
+
 template <typename Child, typename Parent>
-std::chrono::duration<double> test_reporter (void)
+static
+std::chrono::duration<double>
+test_reporter (void)
 {
   using clock = std::chrono::high_resolution_clock;
   using time = clock::time_point;
@@ -1575,98 +1605,126 @@ struct mix
   { }
 };
 
-void test_debinding (void)
+static
+void
+test_debinding (void)
 {
   constexpr auto num_trs = 6;
   std::array<standalone_tracker<remote::standalone_tracker>, num_trs> ts;
-  
+
   std::cout << "test debinding" << std::endl;
-  
-  auto disp_tracker = [&ts] (std::size_t idx)
-  {
-    std::cout << "  " << idx << " [ ";
-    const auto& tr = ts[idx];
-    for (const auto& cmp : ts)
-    {
-      auto it = std::find_if (tr.begin (), tr.end (),
-                              [&cmp] (const standalone_tracker<remote::standalone_tracker>& e)
-                              {
-                                return &e == &cmp;
-                              });
-      if (it != tr.end ())
-        std::cout << "X ";
-      else
-        std::cout << "  ";
-    }
-    std::cout << "]" << std::endl;
-  };
-  
-  auto disp_all = [&ts, &disp_tracker] (void)
-  {
-    std::cout << "{     ";
-    for (std::size_t i = 0; i < ts.size (); ++i)
-      std::cout << i << " ";
-    std::cout << std::endl;
-    for (std::size_t i = 0; i < ts.size (); ++i)
-      disp_tracker (i);
-    std::cout << "}" << std::endl;
-  };
-  
+
+  auto assert_sorted
+    = [&ts](void)
+      {
+        std::for_each (ts.begin (), ts.end (),
+                       [](const standalone_tracker<remote::standalone_tracker>& t)
+                       {
+                         assert (t.is_sorted () && "tracker wasn't sorted");
+                       });
+      };
+
+  auto disp_tracker
+    = [&ts](std::size_t idx)
+      {
+        std::cout << "  " << idx << " [ ";
+        const auto& tr = ts[idx];
+        for (const auto& cmp : ts)
+        {
+          auto it = std::find_if (tr.begin (), tr.end (),
+                                  [&cmp] (const standalone_tracker<remote::standalone_tracker>& e)
+                                  {
+                                    return &e == &cmp;
+                                  });
+          if (it != tr.end ())
+            std::cout << "X ";
+          else
+            std::cout << "  ";
+        }
+        std::cout << "]" << std::endl;
+      };
+
+  auto disp_all
+    = [&ts, &disp_tracker](void)
+      {
+        std::cout << "{     ";
+        for (std::size_t i = 0; i < ts.size (); ++i)
+          std::cout << i << " ";
+        std::cout << std::endl;
+        for (std::size_t i = 0; i < ts.size (); ++i)
+          disp_tracker (i);
+        std::cout << "}" << std::endl;
+      };
+
   ts[0].bind (ts[1]);
   auto it = ts[0].bind (ts[2]);
   ts[0].bind (ts[3]);
   ts[0].bind (ts[4]);
   ts[0].bind (ts[5]);
-  
+
   auto first = ts[1].bind (ts[2]);
   ts[1].bind (ts[3]);
   auto last = ts[1].bind (ts[4]);
   ts[1].bind (ts[5]);
-  
+
+  assert_sorted ();
+
   disp_all ();
-  
+
   ts[0].erase (it);
-  
+
+  assert_sorted ();
+
   disp_all ();
-  
+
   ts[4].bind (ts[0]);
   ts[0].debind (ts[4]);
-  
+
+  assert_sorted ();
+
   disp_all ();
-  
+
   ts[1].erase (first, last);
-  
+
+  assert_sorted ();
+
   disp_all ();
-  
+
   ts[0].clear ();
-  
+
   disp_all ();
-  
+
   ts[1].clear ();
-  
+
   disp_all ();
+
+  assert_sorted ();
 }
 
 // constexpr auto test_debinding_f = make_test_functor ("test debinding\n", &test_debinding);
 
-void test_splicing (void)
+static
+void
+test_splicing (void)
 {
 
 }
 
-void test_range (void)
+static
+void
+test_range (void)
 {
   std::cout << "test range construction" << std::endl;
-  
+
   std::vector<int> data { 3, 5, 7, 5, 5, 8, 2, 7 };
   std::vector<tracker<int, remote::standalone_tracker>> r;
   std::transform (data.begin (), data.end (), std::back_inserter (r),
                   [](int& x) { return tracker<int, remote::standalone_tracker> { x }; });
-  
+
   std::vector<std::reference_wrapper<tracker<int, remote::standalone_tracker>>> filtered;
   std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
                 [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 5; });
-  
+
   standalone_tracker<remote::tracker<int>> tkr { tag::bind, filtered.begin (), filtered.end () };
   auto print_tkr = [&tkr](void)
   {
@@ -1674,7 +1732,7 @@ void test_range (void)
     std::for_each (tkr.begin (), tkr.end (), [](int& i) { std::cout << "  " << i << std::endl; });
     std::cout << "}" << std::endl;
   };
-  
+
   print_tkr ();
   // std::vector<tracker<int, remote::standalone_tracker> *> filtered1;
   // std::for_each (r.begin (), r.end (), [&filtered1](tracker<int, remote::standalone_tracker>& t)
@@ -1686,44 +1744,64 @@ void test_range (void)
   filtered.clear ();
   std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
                 [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 3; });
-  
+
   tkr.bind (filtered.begin (), filtered.end ());
-  
+
   print_tkr ();
-  
+
   filtered.clear ();
   std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
                 [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 7; });
-  
+
   tkr.insert (std::next (tkr.begin ()), filtered.begin (), filtered.end ());
-  
+
   print_tkr ();
   std::cout << "end" << std::endl;
 }
 
-void test_iterators (void)
+static
+void
+test_iterators (void)
 {
   std::cout << "test iterators" << std::endl;
-  
+
   std::vector<int> data { 3, 5, 7, 5, 5, 8, 2, 7 };
   std::vector<tracker<int, remote::standalone_tracker>> r;
   std::transform (data.begin (), data.end (), std::back_inserter (r),
                   [](int& x) { return tracker<int, remote::standalone_tracker> { x }; });
-  
+
   std::vector<std::reference_wrapper<tracker<int, remote::standalone_tracker>>> filtered;
   std::copy_if (r.begin (), r.end (), std::back_inserter (filtered),
                 [](tracker<int, remote::standalone_tracker>& t) { return t.get_parent () == 5; });
-  
+
   standalone_tracker<remote::tracker<int>> tkr { tag::bind, filtered.begin (), filtered.end () };
-  
+
   standalone_tracker<remote::tracker<int>>::iter it = tkr.begin ();
   standalone_tracker<remote::tracker<int>>::citer cit = it;
   (void)cit;
-  
+
   std::cout << "end" << std::endl;
 }
 
-int main()
+class B;
+
+class A
+  : public intrusive_reporter<A, remote::intrusive_tracker<B>>
+{
+  using base = intrusive_reporter<A, remote::intrusive_tracker<B>>;
+
+  public:
+    using reporter_type       = base;
+    using remote_tracker_type = typename tracker_traits<reporter_type>::remote_interface_type;
+    using remote_iterator     = remote_tracker_type::citer;
+};
+
+class B
+  : public intrusive_tracker<B, remote::intrusive_reporter<A>>
+{ };
+
+int
+main()
 {
   try
   {
@@ -1736,7 +1814,7 @@ int main()
       mix& rem = mix_rptr.get_remote ();
       std::cout << rem.num_remotes () << std::endl;
     }
-    
+
     test_debinding ();
 
     std::cout << test_reporter<child, parent> ().count () << std::endl;
@@ -1802,7 +1880,7 @@ int main()
   std::cout << "ntracker : nreporter  :" << sizeof (          tracker<child,  remote::reporter<parent>>          ) << std::endl;
   std::cout << "ntracker : itracker   :" << sizeof (          tracker<child,  remote::intrusive_tracker <parent>>) << std::endl;
   std::cout << "ntracker : ntracker   :" << sizeof (          tracker<child,  remote::tracker <parent>>          ) << std::endl;
-  
+
   std::cout << "ireporter : ireporter :" << sizeof (intrusive_reporter<child, remote::intrusive_reporter<parent>>) << std::endl;
   std::cout << "ireporter : nreporter :" << sizeof (intrusive_reporter<child, remote::reporter<parent>>          ) << std::endl;
   std::cout << "ireporter : itracker  :" << sizeof (intrusive_reporter<child, remote::intrusive_tracker <parent>>) << std::endl;

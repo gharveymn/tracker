@@ -5,7 +5,9 @@ target_link_libraries (tracker INTERFACE $<BUILD_INTERFACE:plf::plf_list>)
 target_sources (
   tracker
   INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/tracker.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/tracker/detail/common.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/tracker/reporter.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/tracker/tracker.hpp>
 )
 
 target_include_directories (
@@ -20,13 +22,6 @@ target_include_directories (
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
 )
 
-set_target_properties (
-  tracker
-  PROPERTIES
-  PUBLIC_HEADER
-    include/gch/tracker.hpp
-)
-
 add_library (gch::tracker ALIAS tracker)
 
 install (
@@ -36,6 +31,15 @@ install (
     tracker-targets
   PUBLIC_HEADER
     DESTINATION include/gch
+  PRIVATE_HEADER
+    DESTINATION include/gch/detail
+)
+
+install (
+  DIRECTORY
+    include/gch
+  DESTINATION
+    include
 )
 
 file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/tracker-config.cmake [=[
