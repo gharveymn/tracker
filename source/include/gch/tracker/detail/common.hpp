@@ -5,8 +5,8 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef OCTAVE_IR_COMMON_HPP
-#define OCTAVE_IR_COMMON_HPP
+#ifndef GCH_TRACKER_COMMON_HPP
+#define GCH_TRACKER_COMMON_HPP
 
 #ifdef __clang__
 #  ifndef GCH_CLANG
@@ -396,8 +396,8 @@ namespace gch
   template <typename ReporterIt, typename RemoteType, typename RemoteInterfaceType>
   class tracker_iterator
   {
-    using reporter_iter         = ReporterIt;
-    using reporter_type         = typename ReporterIt::value_type;
+    using reporter_iter = ReporterIt;
+    using reporter_type = typename ReporterIt::value_type;
 
     static constexpr
     bool
@@ -534,4 +534,4 @@ namespace gch
 
 } // namespace gch
 
-#endif // OCTAVE_IR_COMMON_HPP
+#endif // GCH_TRACKER_COMMON_HPP

@@ -5,8 +5,8 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef OCTAVE_IR_REPORTER_HPP
-#define OCTAVE_IR_REPORTER_HPP
+#ifndef GCH_TRACKER_REPORTER_HPP
+#define GCH_TRACKER_REPORTER_HPP
 
 #include "detail/common.hpp"
 
@@ -920,4 +920,4 @@ namespace gch
 
 }
 
-#endif // OCTAVE_IR_REPORTER_HPP
+#endif // TRACKER_REPORTER_HPP

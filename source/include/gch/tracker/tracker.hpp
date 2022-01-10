@@ -7,8 +7,8 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GCH_TRACKER_HPP
-#define GCH_TRACKER_HPP
+#ifndef GCH_TRACKER_TRACKER_HPP
+#define GCH_TRACKER_TRACKER_HPP
 
 #include "detail/common.hpp"
 #include "reporter.hpp"
