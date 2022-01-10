@@ -1,6 +1,6 @@
 add_library (tracker INTERFACE)
 
-target_link_libraries (tracker INTERFACE $<BUILD_INTERFACE:plf::plf_list>)
+target_link_libraries (tracker INTERFACE plf::plf_list)
 
 target_sources (
   tracker
@@ -29,10 +29,6 @@ install (
     tracker
   EXPORT
     tracker-targets
-  PUBLIC_HEADER
-    DESTINATION include/gch
-  PRIVATE_HEADER
-    DESTINATION include/gch/detail
 )
 
 install (
@@ -44,6 +40,8 @@ install (
 
 file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/tracker-config.cmake [=[
 get_filename_component (PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+include (CMakeFindDependencyMacro)
+find_dependency (plf_list)
 include ("${CMAKE_CURRENT_LIST_DIR}/tracker-targets.cmake")
 ]=])
 
@@ -69,19 +67,6 @@ install (
     lib/cmake/tracker
   NAMESPACE
     gch::
-)
-
-install (
-  FILES
-    ${PROJECT_SOURCE_DIR}/external/plf_list/plf_list.h
-  DESTINATION
-    include/plf
-)
-
-target_include_directories (
-  tracker
-  SYSTEM INTERFACE
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/plf>
 )
 
 # Only include tests if we are at the top level

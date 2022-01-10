@@ -25,10 +25,6 @@ cmake_dependent_option (
   OFF
 )
 
-if (GCH_TRACKER_BUILD_TESTS)
-  enable_testing ()
-endif ()
-
 find_package (Git REQUIRED)
 execute_process (
   COMMAND
@@ -37,10 +33,12 @@ execute_process (
     ${PROJECT_SOURCE_DIR}
 )
 
-add_subdirectory (external/plf_list EXCLUDE_FROM_ALL)
+set (PLF_LIST_BUILD_TESTS ON)
+add_subdirectory (external/plf_list)
 
-add_library (plf::plf_list INTERFACE IMPORTED)
-target_include_directories (plf::plf_list INTERFACE ${PROJECT_SOURCE_DIR}/external/plf_list)
+if (GCH_TRACKER_BUILD_TESTS)
+  enable_testing ()
+endif ()
 
 add_subdirectory (source)
 
