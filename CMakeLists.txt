@@ -12,7 +12,7 @@ string (COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _EXTRA
 
 option (
   GCH_TRACKER_BUILD_TESTS
-  "Set to ON to build tests for gch::small_vector."
+  "Set to ON to build tests for gch::tracker."
   ${_EXTRAS_DEFAULT}
 )
 
@@ -25,16 +25,17 @@ cmake_dependent_option (
   OFF
 )
 
-find_package (Git REQUIRED)
-execute_process (
-  COMMAND
-    ${GIT_EXECUTABLE} submodule --quiet update --init -- external/plf_list
-  WORKING_DIRECTORY
-    ${PROJECT_SOURCE_DIR}
-)
+if (NOT TARGET plf::plf_list)
+  find_package (Git REQUIRED)
+  execute_process (
+    COMMAND
+      ${GIT_EXECUTABLE} submodule --quiet update --init -- external/plf_list
+    WORKING_DIRECTORY
+      ${PROJECT_SOURCE_DIR}
+  )
 
-set (PLF_LIST_BUILD_TESTS ON)
-add_subdirectory (external/plf_list)
+  add_subdirectory (external/plf_list)
+endif ()
 
 if (GCH_TRACKER_BUILD_TESTS)
   enable_testing ()
