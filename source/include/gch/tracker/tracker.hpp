@@ -30,10 +30,11 @@ namespace gch
     using local_access_type  = typename local_base_tag::template access_type<remote_base_tag>;
     using remote_access_type = typename remote_base_tag::template access_type<local_base_tag>;
 
-  using local_const_access_type  = typename local_base_tag::template
-                                     const_access_type<remote_base_tag>;
-  using remote_const_access_type = typename remote_base_tag::template
-                                     const_access_type<local_base_tag>;
+    using local_const_access_type =
+      typename local_base_tag::template const_access_type<remote_base_tag>;
+
+    using remote_const_access_type =
+      typename remote_base_tag::template const_access_type<local_base_tag>;
 
     using local_base_type  = typename local_base_tag::template base_type<local_base_tag,
                                                                          remote_base_tag>;
@@ -170,7 +171,7 @@ namespace gch
 
       rptrs_iter
       transfer_reporters (const rptrs_citer pos, tracker_base& src,
-                               const rptrs_citer first, const rptrs_citer last)
+                          const rptrs_citer first, const rptrs_citer last)
       {
         rptrs_iter ret = m_rptrs.insert (pos, first, last);
         std::for_each (rptrs_citer { ret }, pos,
