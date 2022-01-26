@@ -581,6 +581,11 @@ public:
     : m_reporter (*this, p)
   { }
 
+  nonintruded_child (reporter_type::remote_interface_type& p, std::string s)
+    : m_reporter (*this, p),
+      m_name (std::move (s))
+  { }
+
   nonintruded_child (const nonintruded_child& other)
     : m_reporter (other.m_reporter.clone (), *this)
   { }
@@ -619,6 +624,7 @@ public:
 
 private:
   reporter_type m_reporter;
+  std::string m_name;
 };
 
 template <typename T>
@@ -1130,13 +1136,14 @@ perf_create (void)
   using time = clock::time_point;
   time t1 = clock::now ();
 
-  Parent p, q;
+  Parent p ("p");
+  Parent q ("q");
   std::list<Child> children;
   constexpr std::size_t iter_max = 1000 * multiplier;
 
   for (std::size_t i = 0; i < iter_max; ++i)
   {
-    children.emplace_back (p.create ());
+    children.emplace_back (p.create (std::to_string (i)));
   }
 
   auto print_num_children = [&p, &q] (void)
@@ -1817,9 +1824,14 @@ main()
 
     test_debinding ();
 
+    iparent ip ("ip");
+    ichild ic1 (ip.create ("ic1"));
+    ichild ic2 (ip.create ("ic2"));
+
     std::cout << test_reporter<child, parent> ().count () << std::endl;
     std::cout << test_reporter<nonintruded_child_s, nonintruded_parent_s> ().count () << std::endl;
 
+    std::cout << perf_create<ichild, iparent> ().count () << std::endl;
     std::cout << perf_create<child, parent> ().count () << std::endl;
     std::cout << perf_create<nonintruded_child, nonintruded_parent> ().count () << std::endl;
 
