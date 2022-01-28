@@ -475,7 +475,8 @@ namespace gch
       using local_base_type  = typename traits::local_base_type;
       using remote_base_type = typename traits::remote_base_type;
 
-      static_assert (std::is_same<local_base_type, base>::value);
+      static_assert (std::is_same<local_base_type, base>::value,
+                     "local_base_type should match the base");
 
       friend remote_common_type;
       friend remote_base_type;
@@ -1208,8 +1209,6 @@ namespace gch
       {
         return citer { base::find_sorted_pos (cit.get_remote_interface ()) };
       }
-
-    private:
     }; // tracker_common
 
   } // gch::detail
