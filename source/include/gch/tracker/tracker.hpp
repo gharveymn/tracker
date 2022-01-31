@@ -170,16 +170,14 @@ namespace gch
       }
 
       rptrs_iter
-      transfer_reporters (const rptrs_citer pos, tracker_base& src,
-                          const rptrs_citer first, const rptrs_citer last)
+      transfer_reporters (const rptrs_citer pos, tracker_base& other,
+                          const rptrs_citer other_first, const rptrs_citer other_last)
       {
-        rptrs_iter ret = m_rptrs.insert (pos, first, last);
-        std::for_each (rptrs_citer { ret }, pos,
-                       [this, ret](const local_reporter_type& r)
-                       {
-                         r.get_remote_reporter ().set (*this, ret);
-                       });
-        src.m_rptrs.erase (first, last);
+        rptrs_iter ret = m_rptrs.insert (pos, other_first, other_last);
+        std::for_each (rptrs_citer { ret }, pos, [this, ret](const local_reporter_type& r) {
+          r.get_remote_reporter ().set (*this, ret);
+        });
+        other.m_rptrs.erase (other_first, other_last);
         return ret;
       }
 
@@ -673,96 +671,108 @@ namespace gch
         return splice (cend (), other);
       }
 
-      // moves the binding from other (may throw)
-      GCH_CPP14_CONSTEXPR
-      iterator
-      transfer (const const_iterator pos, local_interface_type& other, const const_iterator it)
-      {
-        return base::transfer_reporters (pos.base (), other, it, std::next (it).base ());
-      }
-
-      GCH_CPP14_CONSTEXPR
-      iterator
-      transfer (const const_iterator pos, local_interface_type&& other, const const_iterator it)
-      {
-        return transfer (pos, other, it);
-      }
-
       // move multiple bindings
       GCH_CPP14_CONSTEXPR
       iterator
-      transfer (const const_iterator pos, local_interface_type& other,
-                const const_iterator first, const const_iterator last)
+      transfer (const_iterator        pos,
+                local_interface_type& other,
+                const_iterator        other_first,
+                const_iterator        other_last)
       {
-        return base::transfer_reporters (pos.base (), other, first.base (), last.base ());
+        return base::transfer_reporters (
+          pos.base (),
+          other,
+          other_first.base (),
+          other_last.base ());
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
-      transfer (const const_iterator pos, local_interface_type&& other,
-                const const_iterator first, const const_iterator last)
+      transfer (const_iterator         pos,
+                local_interface_type&& other,
+                const_iterator         other_first,
+                const_iterator         other_last)
       {
-        return transfer (pos, other, first, last);
+        return transfer (pos, other, other_first, other_last);
+      }
+
+      // moves the binding from other (may throw)
+      GCH_CPP14_CONSTEXPR
+      iterator
+      transfer (const_iterator pos, local_interface_type& other, const_iterator other_it)
+      {
+        return transfer (pos, other, other_it, std::next (other_it));
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
-      transfer_front (local_interface_type& other, const const_iterator it)
+      transfer (const_iterator pos, local_interface_type&& other, const_iterator other_it)
       {
-        return transfer (cbegin (), other, it);
+        return transfer (pos, other, other_it);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
-      transfer_front (local_interface_type&& other, const const_iterator it)
+      transfer_front (local_interface_type& other, const_iterator other_it)
       {
-        return transfer (cbegin (), other, it);
+        return transfer (cbegin (), other, other_it);
+      }
+
+      GCH_CPP14_CONSTEXPR
+      iterator
+      transfer_front (local_interface_type&& other, const_iterator other_it)
+      {
+        return transfer (cbegin (), other, other_it);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
       transfer_front (local_interface_type& other,
-                      const const_iterator first, const const_iterator last)
+                      const_iterator        other_first,
+                      const_iterator        other_last)
       {
-        return transfer (cbegin (), other, first, last);
+        return transfer (cbegin (), other, other_first, other_last);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
       transfer_front (local_interface_type&& other,
-                      const const_iterator first, const const_iterator last)
+                      const_iterator         other_first,
+                      const_iterator         other_last)
       {
-        return transfer (cbegin (), other, first, last);
+        return transfer (cbegin (), other, other_first, other_last);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
-      transfer_back (local_interface_type& other, const const_iterator it)
+      transfer_back (local_interface_type& other, const_iterator other_it)
       {
-        return transfer (cend (), other, it);
+        return transfer (cend (), other, other_it);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
-      transfer_back (local_interface_type&& other, const const_iterator it)
+      transfer_back (local_interface_type&& other, const_iterator other_it)
       {
-        return transfer (cend (), other, it);
+        return transfer (cend (), other, other_it);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
       transfer_back (local_interface_type& other,
-                     const const_iterator first, const const_iterator last)
+                     const_iterator        other_first,
+                     const_iterator        other_last)
       {
-        return transfer (cend (), other, first, last);
+        return transfer (cend (), other, other_first, other_last);
       }
 
       GCH_CPP14_CONSTEXPR
       iterator
       transfer_back (local_interface_type&& other,
-                     const const_iterator first, const const_iterator last)
+                     const_iterator         other_first,
+                     const_iterator         other_last)
       {
-        return transfer (cend (), other, first, last);
+        return transfer (cend (), other, other_first, other_last);
       }
 
       template <typename Tag = remote_tag, tag::enable_if_tracker_t<Tag> * = nullptr>
