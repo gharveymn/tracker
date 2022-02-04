@@ -11,7 +11,7 @@ project (
 string (COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _EXTRAS_DEFAULT)
 
 option (
-  GCH_TRACKER_BUILD_TESTS
+  GCH_TRACKER_ENABLE_TESTS
   "Set to ON to build tests for gch::tracker."
   ${_EXTRAS_DEFAULT}
 )
@@ -37,7 +37,7 @@ if (NOT TARGET plf::plf_list)
   add_subdirectory (external/plf_list)
 endif ()
 
-if (GCH_TRACKER_BUILD_TESTS)
+if (GCH_TRACKER_ENABLE_TESTS)
   enable_testing ()
 endif ()
 

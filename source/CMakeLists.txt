@@ -70,6 +70,6 @@ install (
 )
 
 # Only include tests if we are at the top level
-if (GCH_TRACKER_BUILD_TESTS)
+if (GCH_TRACKER_ENABLE_TESTS)
   add_subdirectory (test)
 endif ()
